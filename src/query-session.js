@@ -39,6 +39,16 @@ function formatResults(result) {
           const ms = Number(val.micros) / 1000;
           return new Date(ms).toISOString().replace("T", " ").replace("Z", "");
         }
+        // Handle DuckDB UUID objects (returned as {hugeint: string})
+        if ("hugeint" in val) {
+          // Convert 128-bit signed decimal to UUID hex string
+          // DuckDB XORs the high bit for sorting, so flip it back
+          let n = BigInt(val.hugeint);
+          if (n < 0n) n += 1n << 128n; // Convert from signed to unsigned
+          n ^= 1n << 127n; // Flip high bit (undo DuckDB's sort optimization)
+          const hex = n.toString(16).padStart(32, "0");
+          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        }
         return JSON.stringify(val, (_, v) =>
           typeof v === "bigint" ? v.toString() : v,
         );
