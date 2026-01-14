@@ -1,0 +1,35 @@
+{
+  "name": "cc-query",
+  "version": "0.1.0",
+  "description": "SQL REPL for querying Claude Code session data",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dannycoates/cc-query.git"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "cc-query": "./bin/cc-query.js"
+  },
+  "files": [
+    "index.js",
+    "src",
+    "bin"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duckdb/node-api": "1.4.3-r.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.8",
+    "typescript": "^5.9.3"
+  }
+}
