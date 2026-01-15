@@ -91,18 +91,31 @@ function formatResults(result) {
 export class QuerySession {
   /** @type {import("@duckdb/node-api").DuckDBConnection | undefined} */
   #connection;
-  /** @type {string} */
+  /** @type {string | string[]} */
   #filePattern;
   /** @type {QuerySessionInfo} */
   #info;
 
   /**
-   * @param {string} filePattern - Glob pattern for JSONL files
+   * @param {string | string[]} filePattern - Glob pattern(s) for JSONL files
    * @param {QuerySessionInfo} info - Session counts
    */
   constructor(filePattern, info) {
     this.#filePattern = filePattern;
     this.#info = info;
+  }
+
+  /**
+   * Format file pattern for use in DuckDB SQL
+   * @returns {string} SQL expression for the file pattern
+   */
+  #formatFilePatternForSql() {
+    if (Array.isArray(this.#filePattern)) {
+      // DuckDB accepts a list of patterns: ['pattern1', 'pattern2']
+      const patterns = this.#filePattern.map((p) => `'${p}'`).join(", ");
+      return `[${patterns}]`;
+    }
+    return `'${this.#filePattern}'`;
   }
 
   /**
@@ -290,7 +303,7 @@ export class QuerySession {
       regexp_extract(filename, '/projects/([^/]+)/', 1) as project,
       ordinality as rownum
     FROM read_ndjson(
-      '${this.#filePattern}',
+      ${this.#formatFilePatternForSql()},
       filename=true,
       ignore_errors=true,
       columns={${columnsDef}}
@@ -342,7 +355,7 @@ export class QuerySession {
     SELECT
       (json->>'uuid')::UUID as uuid,
       json as raw
-    FROM read_ndjson_objects('${this.#filePattern}', ignore_errors=true)
+    FROM read_ndjson_objects(${this.#formatFilePatternForSql()}, ignore_errors=true)
     WHERE json->>'uuid' IS NOT NULL AND length(json->>'uuid') > 0;
 
     -- Tool uses: All tool calls with unnested content blocks

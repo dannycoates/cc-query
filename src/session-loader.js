@@ -42,7 +42,7 @@ function countSessionsAndAgents(files, sessionFilter = "") {
  * Get session info and file pattern for querying
  * @param {string | null} claudeProjectsDir - Path to ~/.claude/projects/{slug}, or null for all projects
  * @param {string} [sessionFilter] - Optional session ID prefix
- * @returns {Promise<{ sessionCount: number, agentCount: number, projectCount: number, filePattern: string }>}
+ * @returns {Promise<{ sessionCount: number, agentCount: number, projectCount: number, filePattern: string | string[] }>}
  */
 export async function getSessionFiles(claudeProjectsDir, sessionFilter = "") {
   // If no specific project, use all projects
@@ -72,8 +72,13 @@ export async function getSessionFiles(claudeProjectsDir, sessionFilter = "") {
     }
 
     // Use glob pattern for all projects (** for recursive matching)
+    // When session filter is provided, include both the filtered session AND its subagents
+    // Subagents are stored in {session_id}/subagents/*.jsonl
     const filePattern = sessionFilter
-      ? join(base, "*", `**/${sessionFilter}*.jsonl`)
+      ? [
+          join(base, "*", `${sessionFilter}*.jsonl`),
+          join(base, "*", `${sessionFilter}*/subagents/*.jsonl`),
+        ]
       : join(base, "*", "**/*.jsonl");
 
     return {
@@ -93,9 +98,14 @@ export async function getSessionFiles(claudeProjectsDir, sessionFilter = "") {
     return { sessionCount: 0, agentCount: 0, projectCount: 1, filePattern: "" };
   }
 
-  // Use glob pattern with ** for recursive matching
+  // Use glob pattern for matching
+  // When session filter is provided, include both the filtered session AND its subagents
+  // Subagents are stored in {session_id}/subagents/*.jsonl
   const filePattern = sessionFilter
-    ? join(claudeProjectsDir, `**/${sessionFilter}*.jsonl`)
+    ? [
+        join(claudeProjectsDir, `${sessionFilter}*.jsonl`),
+        join(claudeProjectsDir, `${sessionFilter}*/subagents/*.jsonl`),
+      ]
     : join(claudeProjectsDir, "**/*.jsonl");
 
   return {
