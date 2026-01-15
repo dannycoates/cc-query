@@ -344,6 +344,103 @@ export class QuerySession {
       json as raw
     FROM read_ndjson_objects('${this.#filePattern}', ignore_errors=true)
     WHERE json->>'uuid' IS NOT NULL AND length(json->>'uuid') > 0;
+
+    -- Tool uses: All tool calls with unnested content blocks
+    CREATE OR REPLACE VIEW tool_uses AS
+    SELECT
+      m.uuid,
+      m.timestamp,
+      m.sessionId,
+      m.isAgent,
+      m.agentId,
+      m.project,
+      m.rownum,
+      block->>'name' as tool_name,
+      block->>'id' as tool_id,
+      block->'input' as tool_input,
+      row_number() OVER (PARTITION BY m.uuid ORDER BY (SELECT NULL)) - 1 as block_index
+    FROM assistant_messages m,
+    LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block)
+    WHERE block->>'type' = 'tool_use';
+
+    -- Tool results: All tool results with duration
+    CREATE OR REPLACE VIEW tool_results AS
+    WITH array_messages AS (
+      SELECT * FROM user_messages
+      WHERE json_type(message->'content') = 'ARRAY'
+    )
+    SELECT
+      m.uuid,
+      m.timestamp,
+      m.sessionId,
+      m.isAgent,
+      m.agentId,
+      m.project,
+      m.rownum,
+      block->>'tool_use_id' as tool_use_id,
+      CAST(block->>'is_error' AS BOOLEAN) as is_error,
+      block->>'content' as result_content,
+      CAST(m.toolUseResult->>'durationMs' AS INTEGER) as duration_ms,
+      m.sourceToolAssistantUUID
+    FROM array_messages m,
+    LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block)
+    WHERE block->>'type' = 'tool_result';
+
+    -- Token usage: Pre-cast token counts
+    CREATE OR REPLACE VIEW token_usage AS
+    SELECT
+      uuid,
+      timestamp,
+      sessionId,
+      isAgent,
+      agentId,
+      project,
+      message->>'model' as model,
+      message->>'stop_reason' as stop_reason,
+      CAST(message->'usage'->>'input_tokens' AS BIGINT) as input_tokens,
+      CAST(message->'usage'->>'output_tokens' AS BIGINT) as output_tokens,
+      CAST(message->'usage'->>'cache_read_input_tokens' AS BIGINT) as cache_read_tokens,
+      CAST(message->'usage'->>'cache_creation_input_tokens' AS BIGINT) as cache_creation_tokens
+    FROM assistant_messages
+    WHERE (message->'usage') IS NOT NULL;
+
+    -- Bash commands: Bash tool uses with extracted command
+    CREATE OR REPLACE VIEW bash_commands AS
+    SELECT
+      uuid,
+      timestamp,
+      sessionId,
+      isAgent,
+      agentId,
+      project,
+      rownum,
+      tool_id,
+      tool_input->>'command' as command,
+      tool_input->>'description' as description,
+      CAST(tool_input->>'timeout' AS INTEGER) as timeout,
+      CAST(tool_input->>'run_in_background' AS BOOLEAN) as run_in_background
+    FROM tool_uses
+    WHERE tool_name = 'Bash';
+
+    -- File operations: Read/Write/Edit/Glob/Grep with extracted paths
+    CREATE OR REPLACE VIEW file_operations AS
+    SELECT
+      uuid,
+      timestamp,
+      sessionId,
+      isAgent,
+      agentId,
+      project,
+      rownum,
+      tool_id,
+      tool_name,
+      COALESCE(
+        tool_input->>'file_path',
+        tool_input->>'path'
+      ) as file_path,
+      tool_input->>'pattern' as pattern
+    FROM tool_uses
+    WHERE tool_name IN ('Read', 'Write', 'Edit', 'Glob', 'Grep');
   `;
   }
 }

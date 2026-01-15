@@ -49,6 +49,8 @@ qs.cleanup();
 
 ## Views
 
+### Base Views
+
 | View                 | Description                                          |
 | -------------------- | ---------------------------------------------------- |
 | `messages`           | All messages (user, assistant, system)               |
@@ -57,6 +59,16 @@ qs.cleanup();
 | `system_messages`    | System messages (hooks, retries, tool output, etc.)  |
 | `human_messages`     | Only human-typed messages (excludes tool results)    |
 | `raw_messages`       | Raw JSON for each message (uuid + full JSON)         |
+
+### Convenience Views (pre-extracted fields)
+
+| View              | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `tool_uses`       | All tool calls with name, id, input extracted           |
+| `tool_results`    | All tool results with duration, error status            |
+| `token_usage`     | Pre-cast token counts from assistant messages           |
+| `bash_commands`   | Bash tool uses with command extracted                   |
+| `file_operations` | Read/Write/Edit/Glob/Grep with file paths extracted     |
 
 ## Common Fields (all views)
 
@@ -110,6 +122,73 @@ qs.cleanup();
 | `toolUseID`           | VARCHAR | Related tool use ID                      |
 | `hasOutput`           | BOOLEAN | Whether tool produced output             |
 | `preventedContinuation` | BOOLEAN | Whether continuation was prevented     |
+
+## Convenience View Fields
+
+### tool_uses
+
+| Field        | Type      | Description                              |
+| ------------ | --------- | ---------------------------------------- |
+| `uuid`       | UUID      | Assistant message UUID                   |
+| `timestamp`  | TIMESTAMP | When the tool was called                 |
+| `sessionId`  | UUID      | Session ID                               |
+| `tool_name`  | VARCHAR   | Tool name (e.g., `Read`, `Bash`)         |
+| `tool_id`    | VARCHAR   | Unique tool use ID                       |
+| `tool_input` | JSON      | Tool input parameters                    |
+| `block_index`| INTEGER   | Position in content array (0-indexed)    |
+| `isAgent`, `agentId`, `project`, `rownum` | - | Derived fields |
+
+### tool_results
+
+| Field                   | Type      | Description                              |
+| ----------------------- | --------- | ---------------------------------------- |
+| `uuid`                  | UUID      | User message UUID                        |
+| `timestamp`             | TIMESTAMP | When the result was received             |
+| `sessionId`             | UUID      | Session ID                               |
+| `tool_use_id`           | VARCHAR   | Links to `tool_uses.tool_id`             |
+| `is_error`              | BOOLEAN   | Whether the tool errored                 |
+| `result_content`        | VARCHAR   | Tool output content                      |
+| `duration_ms`           | INTEGER   | How long the tool took (when available)  |
+| `sourceToolAssistantUUID` | UUID    | Assistant message that called this tool  |
+
+### token_usage
+
+| Field                  | Type      | Description                              |
+| ---------------------- | --------- | ---------------------------------------- |
+| `uuid`                 | UUID      | Message UUID                             |
+| `timestamp`            | TIMESTAMP | Message timestamp                        |
+| `sessionId`            | UUID      | Session ID                               |
+| `model`                | VARCHAR   | Model name                               |
+| `stop_reason`          | VARCHAR   | Why generation stopped                   |
+| `input_tokens`         | BIGINT    | Input tokens used                        |
+| `output_tokens`        | BIGINT    | Output tokens generated                  |
+| `cache_read_tokens`    | BIGINT    | Tokens read from cache                   |
+| `cache_creation_tokens`| BIGINT    | Tokens written to cache                  |
+
+### bash_commands
+
+| Field             | Type      | Description                              |
+| ----------------- | --------- | ---------------------------------------- |
+| `uuid`            | UUID      | Message UUID                             |
+| `timestamp`       | TIMESTAMP | When the command was called              |
+| `sessionId`       | UUID      | Session ID                               |
+| `tool_id`         | VARCHAR   | Tool use ID                              |
+| `command`         | VARCHAR   | The bash command                         |
+| `description`     | VARCHAR   | Command description                      |
+| `timeout`         | INTEGER   | Timeout in milliseconds                  |
+| `run_in_background` | BOOLEAN | Whether command runs in background       |
+
+### file_operations
+
+| Field       | Type      | Description                              |
+| ----------- | --------- | ---------------------------------------- |
+| `uuid`      | UUID      | Message UUID                             |
+| `timestamp` | TIMESTAMP | When the operation occurred              |
+| `sessionId` | UUID      | Session ID                               |
+| `tool_id`   | VARCHAR   | Tool use ID                              |
+| `tool_name` | VARCHAR   | `Read`, `Write`, `Edit`, `Glob`, `Grep`  |
+| `file_path` | VARCHAR   | Target file path                         |
+| `pattern`   | VARCHAR   | Glob/grep pattern (when applicable)      |
 
 ---
 
@@ -228,6 +307,34 @@ When returning tool results, content is an array:
 
 ## Example Queries
 
+### Using Convenience Views (Recommended)
+
+These views pre-extract common fields so you don't need `json_extract_string()`:
+
+```sql
+-- Tool usage by name
+SELECT tool_name, count(*) as uses FROM tool_uses GROUP BY tool_name ORDER BY uses DESC;
+
+-- Token usage stats
+SELECT sum(input_tokens), sum(output_tokens), sum(cache_read_tokens) FROM token_usage;
+
+-- Recent bash commands
+SELECT left(command, 80) as cmd FROM bash_commands ORDER BY timestamp DESC LIMIT 10;
+
+-- Files touched
+SELECT tool_name, file_path FROM file_operations ORDER BY timestamp DESC LIMIT 10;
+
+-- Tool errors
+SELECT tool_use_id, left(result_content, 100) FROM tool_results WHERE is_error = true LIMIT 10;
+
+-- Join tool calls with results
+SELECT tu.tool_name, count(*) as calls, sum(CASE WHEN tr.is_error THEN 1 ELSE 0 END) as errors
+FROM tool_uses tu LEFT JOIN tool_results tr ON tu.tool_id = tr.tool_use_id
+GROUP BY tu.tool_name ORDER BY calls DESC;
+```
+
+### Using Base Views (when you need raw JSON access)
+
 ### Count messages by stop reason
 
 ```sql
@@ -242,6 +349,10 @@ ORDER BY cnt DESC;
 ### Get token usage stats
 
 ```sql
+-- Simplified with token_usage view:
+SELECT sum(input_tokens), sum(output_tokens), sum(cache_read_tokens) FROM token_usage;
+
+-- Or with raw JSON:
 SELECT
   sum(CAST(message->'usage'->>'input_tokens' AS BIGINT)) as total_input,
   sum(CAST(message->'usage'->>'output_tokens' AS BIGINT)) as total_output,
@@ -342,12 +453,18 @@ LIMIT 5;
 ### Find tool results (in user messages)
 
 ```sql
-SELECT
-  timestamp,
-  block->>'tool_use_id' as tool_id,
-  CAST(block->>'is_error' AS BOOLEAN) as is_error,
-  left(block->>'content', 100) as result_preview
-FROM user_messages,
+-- Using convenience view (recommended)
+SELECT timestamp, tool_use_id, is_error, left(result_content, 100) as preview
+FROM tool_results LIMIT 10;
+
+-- Or with UNNEST (requires CTE to pre-filter array content)
+WITH array_msgs AS (
+  SELECT * FROM user_messages WHERE json_type(message->'content') = 'ARRAY'
+)
+SELECT timestamp, block->>'tool_use_id' as tool_id,
+       CAST(block->>'is_error' AS BOOLEAN) as is_error,
+       left(block->>'content', 100) as result_preview
+FROM array_msgs,
 LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block)
 WHERE block->>'type' = 'tool_result'
 LIMIT 10;
@@ -356,11 +473,17 @@ LIMIT 10;
 ### Find tool errors
 
 ```sql
-SELECT
-  timestamp,
-  block->>'tool_use_id' as tool_id,
-  left(block->>'content', 200) as error_content
-FROM user_messages,
+-- Using convenience view (recommended)
+SELECT timestamp, tool_use_id, left(result_content, 200) as error
+FROM tool_results WHERE is_error = true LIMIT 10;
+
+-- Or with UNNEST (requires CTE to pre-filter array content)
+WITH array_msgs AS (
+  SELECT * FROM user_messages WHERE json_type(message->'content') = 'ARRAY'
+)
+SELECT timestamp, block->>'tool_use_id' as tool_id,
+       left(block->>'content', 200) as error_content
+FROM array_msgs,
 LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block)
 WHERE block->>'type' = 'tool_result'
   AND CAST(block->>'is_error' AS BOOLEAN) = true

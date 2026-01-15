@@ -1,6 +1,6 @@
 {
   "name": "cc-query",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "SQL REPL for querying Claude Code session data",
   "type": "module",
   "exports": {
@@ -15,7 +15,7 @@
     "node": ">=24"
   },
   "bin": {
-    "cc-query": "./bin/cc-query.js"
+    "cc-query": "bin/cc-query.js"
   },
   "files": [
     "index.js",

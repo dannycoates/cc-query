@@ -52,15 +52,22 @@ function getHelpText() {
   return `
 Commands:
   .help, .h      Show this help
-  .schema, .s    Show table schema (runs DESCRIBE messages)
+  .schema, .s    Show schemas for all views
   .schema <view> Show schema for a specific view
   .quit, .q      Exit
 
 Views:
   messages            All messages (user, assistant, system)
   user_messages       User messages with user-specific fields
+  human_messages      Human-typed messages (excludes tool results)
   assistant_messages  Assistant messages with error, requestId, etc.
   system_messages     System messages with hooks, retry info, etc.
+  raw_messages        Raw JSON for each message by uuid
+  tool_uses           All tool calls with unnested content blocks
+  tool_results        Tool results with duration and error status
+  token_usage         Token counts per assistant message
+  bash_commands       Bash tool calls with extracted command
+  file_operations     Read/Write/Edit/Glob/Grep with file paths
 
 Example queries:
   -- Count messages by type
@@ -137,7 +144,23 @@ async function handleDotCommand(command, qs) {
   }
 
   if (cmd === ".schema" || cmd === ".s") {
-    await executeQuery(qs, "DESCRIBE messages");
+    const views = [
+      "messages",
+      "user_messages",
+      "human_messages",
+      "assistant_messages",
+      "system_messages",
+      "raw_messages",
+      "tool_uses",
+      "tool_results",
+      "token_usage",
+      "bash_commands",
+      "file_operations",
+    ];
+    for (const view of views) {
+      console.log(`\n=== ${view} ===`);
+      await executeQuery(qs, `DESCRIBE ${view}`);
+    }
     return false;
   }
 
