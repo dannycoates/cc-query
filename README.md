@@ -42,13 +42,16 @@ echo "SELECT count(*) FROM messages;" | cc-query .
 
 ## Skill (experimental)
 
-This [skill](https://gist.github.com/dannycoates/b4436fb77c9cfd2763028eee42d1d320) gives claude the ability and slash command `/reflect` to work with claude session history.
+This [example skill](examples/skills/reflect/SKILL.md) gives claude the ability and slash command `/reflect` to work with claude session history.
+
+Why not a plugin? If you copy the skill you can reflect on it to adapt to your own usage.
 
 For example you can ask questions like:
 - Across all projects what bash commands return the most errors?
 - Let's analyze the last session and identify how we might improve the claude.md file
 - Gimme a summary of what we worked on this past week
 - Let's go though our whole session history and identify repeated patterns that we could extract into skills
+- Let's look at our use of cc-query tool calls to see how we might improve the reflect skill
 
 ## License
 
