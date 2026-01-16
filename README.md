@@ -53,6 +53,15 @@ For example you can ask questions like:
 - Let's go though our whole session history and identify repeated patterns that we could extract into skills
 - Let's look at our use of cc-query tool calls to see how we might improve the reflect skill
 
+### Test drive
+
+To test drive this skill do something like this:
+
+1. `npm i -g cc-query`
+2. Clone this repo or otherwise fetch the `examples/skills/reflect` dir
+3. `mkdir -p ~/.claude/skills && cp -R examples/skills/reflect ~/.claude/skills/`
+4. run claude and use `/reflect [whatever you want]`
+
 ## License
 
 MIT
