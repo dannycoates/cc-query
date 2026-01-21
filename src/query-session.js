@@ -9,6 +9,59 @@ import { getSessionFiles } from "./session-loader.js";
  */
 
 /**
+ * Convert a result value to string for display
+ * @param {any} val
+ * @returns {string}
+ */
+function valueToString(val) {
+  if (val === null || val === undefined) return "NULL";
+  if (typeof val === "bigint") return val.toString();
+  if (typeof val === "object") {
+    // Handle DuckDB timestamp objects (returned as {micros: bigint})
+    if ("micros" in val) {
+      const ms = Number(val.micros) / 1000;
+      return new Date(ms).toISOString().replace("T", " ").replace("Z", "");
+    }
+    // Handle DuckDB UUID objects (returned as {hugeint: string})
+    if ("hugeint" in val) {
+      // Convert 128-bit signed decimal to UUID hex string
+      // DuckDB XORs the high bit for sorting, so flip it back
+      let n = BigInt(val.hugeint);
+      if (n < 0n) n += 1n << 128n; // Convert from signed to unsigned
+      n ^= 1n << 127n; // Flip high bit (undo DuckDB's sort optimization)
+      const hex = n.toString(16).padStart(32, "0");
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+    return JSON.stringify(val, (_, v) =>
+      typeof v === "bigint" ? v.toString() : v,
+    );
+  }
+  return String(val);
+}
+
+/**
+ * Format query results as TSV with header row
+ * @param {import("@duckdb/node-api").DuckDBResultReader} result
+ * @returns {string}
+ */
+function formatResultsTsv(result) {
+  const columnCount = result.columnCount;
+  if (columnCount === 0) return "";
+
+  const columnNames = [];
+  for (let i = 0; i < columnCount; i++) {
+    columnNames.push(result.columnName(i));
+  }
+  const rows = result.getRows();
+
+  const lines = [columnNames.join("\t")];
+  for (const row of rows) {
+    lines.push(row.map(valueToString).join("\t"));
+  }
+  return lines.join("\n");
+}
+
+/**
  * Format query results as a table string
  * @param {import("@duckdb/node-api").DuckDBResultReader} result
  * @returns {string}
@@ -29,33 +82,7 @@ function formatResults(result) {
   }
 
   // Convert all values to strings and calculate column widths
-  const stringRows = rows.map((row) =>
-    row.map((val) => {
-      if (val === null || val === undefined) return "NULL";
-      if (typeof val === "bigint") return val.toString();
-      if (typeof val === "object") {
-        // Handle DuckDB timestamp objects (returned as {micros: bigint})
-        if ("micros" in val) {
-          const ms = Number(val.micros) / 1000;
-          return new Date(ms).toISOString().replace("T", " ").replace("Z", "");
-        }
-        // Handle DuckDB UUID objects (returned as {hugeint: string})
-        if ("hugeint" in val) {
-          // Convert 128-bit signed decimal to UUID hex string
-          // DuckDB XORs the high bit for sorting, so flip it back
-          let n = BigInt(val.hugeint);
-          if (n < 0n) n += 1n << 128n; // Convert from signed to unsigned
-          n ^= 1n << 127n; // Flip high bit (undo DuckDB's sort optimization)
-          const hex = n.toString(16).padStart(32, "0");
-          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-        }
-        return JSON.stringify(val, (_, v) =>
-          typeof v === "bigint" ? v.toString() : v,
-        );
-      }
-      return String(val);
-    }),
-  );
+  const stringRows = rows.map((row) => row.map(valueToString));
 
   const widths = columnNames.map((name, i) => {
     const maxDataWidth = Math.max(
@@ -169,6 +196,19 @@ export class QuerySession {
     }
     const result = await this.#connection.runAndReadAll(sql);
     return formatResults(result);
+  }
+
+  /**
+   * Execute a SQL query and return TSV formatted string with header
+   * @param {string} sql
+   * @returns {Promise<string>} Query result as TSV
+   */
+  async queryTsv(sql) {
+    if (!this.#connection) {
+      throw new Error("Session not initialized - use QuerySession.create()");
+    }
+    const result = await this.#connection.runAndReadAll(sql);
+    return formatResultsTsv(result);
   }
 
   /**

@@ -188,6 +188,7 @@ async function readStdin() {
 
 /**
  * Run queries from piped input (non-interactive mode)
+ * Uses TSV output format with --- separator between queries
  * @param {QuerySession} qs
  * @param {string} input
  */
@@ -198,12 +199,25 @@ async function runPipedQueries(qs, input) {
     .map((s) => s.trim())
     .filter((s) => s && s !== ";");
 
+  let isFirstOutput = true;
+
   for (const stmt of statements) {
     if (stmt.startsWith(".")) {
       const shouldExit = await handleDotCommand(stmt, qs);
       if (shouldExit) break;
     } else {
-      await executeQuery(qs, stmt);
+      try {
+        const result = await qs.queryTsv(stmt);
+        if (result) {
+          if (!isFirstOutput) {
+            console.log("---");
+          }
+          console.log(result);
+          isFirstOutput = false;
+        }
+      } catch (err) {
+        console.error(`Error: ${err instanceof Error ? err.message : err}`);
+      }
     }
   }
 }
