@@ -49,8 +49,6 @@ EOF
 
 **Analyzing a specific session**: See [session-analysis.md](session-analysis.md) for templates and output format.
 
-**Session handoff summaries**: See [session-handoff.md](session-handoff.md) for optimized single-call workflow.
-
 ## Reference
 
 **Schema details**: Run `echo '.schema' | cc-query` if you need the full schema.
