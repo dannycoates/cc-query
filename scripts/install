@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+cd "${CLAUDE_PLUGIN_ROOT}"
+
+# Already installed
+if [ -d "node_modules" ]; then
+  exit 0
+fi
+
+npm install
