@@ -1,7 +1,7 @@
 {
   "name": "cc-query",
   "description": "SQL REPL for querying Claude Code session data",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": {
     "name": "Danny Coates"
   },
