@@ -4,6 +4,24 @@ SQL REPL for querying Claude Code session data using DuckDB.
 
 ## Installation
 
+### As a Claude Code Plugin
+
+1. Add the marketplace:
+   ```
+   /plugin marketplace add dannycoates/cc-query
+   ```
+
+2. Install the plugin:
+   ```
+   /plugin install cc-query@dannycoates-cc-query
+   ```
+
+The plugin automatically runs `npm install` on first session start.
+
+### Manual Installation
+
+For use outside of Claude Code
+
 ```bash
 npm install -g cc-query
 ```
@@ -31,7 +49,12 @@ echo "SELECT count(*) FROM messages;" | cc-query .
 - `messages` - All messages with parsed fields
 - `user_messages` - User messages only
 - `assistant_messages` - Assistant responses only
-- `tool_calls` - Tool invocations from assistant messages
+- `human_messages` - Human-typed messages (no tool results)
+- `tool_uses` - Tool invocations from assistant messages
+- `tool_results` - Tool results with duration and error status
+- `token_usage` - Token consumption per message
+- `bash_commands` - Bash command details
+- `file_operations` - File read/write/edit operations
 - `raw_messages` - Unparsed JSONL data
 
 ## REPL Commands
@@ -40,27 +63,36 @@ echo "SELECT count(*) FROM messages;" | cc-query .
 - `.schema` - Show table schema
 - `.quit` - Exit
 
-## Skill (experimental)
+## Skills
 
-This [example skill](examples/skills/reflect/SKILL.md) gives claude the ability and slash command `/reflect` to work with claude session history.
+The plugin includes two skills for session analysis:
 
-Why not a plugin? If you copy the skill you can reflect on it to adapt to your own usage.
+### `/reflect`
 
-For example you can ask questions like:
+Query and analyze Claude Code session history. Use for:
+- Token usage analysis
+- Tool patterns across projects
+- Finding user corrections/preferences
+- Weekly summaries
+
+See [skills/reflect/SKILL.md](skills/reflect/SKILL.md) for query reference.
+
+### `/handoff`
+
+Create detailed handoff documents for work continuation. Produces:
+- Task status and progress
+- Files modified with change summaries
+- Key conversation flow
+- Actionable next steps
+
+See [skills/handoff/SKILL.md](skills/handoff/SKILL.md) for output format.
+
+### Example Questions
+
 - Across all projects what bash commands return the most errors?
-- Let's analyze the last session and identify how we might improve the claude.md file
-- Gimme a summary of what we worked on this past week
-- Let's go though our whole session history and identify repeated patterns that we could extract into skills
-- Let's look at our use of cc-query tool calls to see how we might improve the reflect skill
-
-### Test drive
-
-To test drive this skill do something like this:
-
-1. `npm i -g cc-query`
-2. Clone this repo or otherwise fetch the `examples/skills/reflect` dir
-3. `mkdir -p ~/.claude/skills && cp -R examples/skills/reflect ~/.claude/skills/`
-4. run claude and use `/reflect [whatever you want]`
+- Let's analyze the last session and identify how we might improve the CLAUDE.md file
+- Give me a summary of what we worked on this past week
+- Create a handoff document for this session
 
 ## License
 
