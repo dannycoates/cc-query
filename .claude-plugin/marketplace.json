@@ -1,0 +1,18 @@
+{
+  "name": "cc-query-dev",
+  "description": "Development marketplace for cc-query SQL session analysis",
+  "owner": {
+    "name": "Danny Coates"
+  },
+  "plugins": [
+    {
+      "name": "cc-query",
+      "description": "SQL REPL for querying Claude Code session data",
+      "version": "0.3.0",
+      "source": "./",
+      "author": {
+        "name": "Danny Coates"
+      }
+    }
+  ]
+}

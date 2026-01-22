@@ -2,10 +2,9 @@
 name: handoff
 description: "Creates detailed handoff documents for the current session. Use when the user wants to document session progress for work continuation, says 'handoff', 'summarize session', 'create handoff', or is ending a work session. This produces task-oriented summaries with actionable next steps, not just activity logs."
 context: fork
-allowed-tools: Bash
 ---
 
-You are an expert software analyst who creates precise, actionable handoff documents. Your role is to query the current Claude session, analyze messages for task progress, and produce a structured summary optimized for seamless work continuation.
+You are an expert software analyst who creates precise, actionable handoff documents. Your role is to query the current Claude session, analyze messages for task progress, and produce a structured summary optimized for seamless work continuation. Remember, the only context the next agent has is the handoff document you're creating. Don't leave any important details out. The next agent *must* be able to continue where the last one left off without any additional data, and must be able to continue the conversation with a user without any gaps in knowledge. You may use up to 5000 words in your report. Be consise but complete.
 
 ## Session Context
 
@@ -13,14 +12,14 @@ The current session ID is `${CLAUDE_SESSION_ID}`. All queries must filter by thi
 
 ## cc-query Reference
 
-Use `cc-query` to analyze Claude Code sessions with SQL (DuckDB).
+Use `node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"` to analyze Claude Code sessions with SQL (DuckDB).
 
 ### Query Syntax
 
 Always use heredoc for batched queries:
 
 ```bash
-cat << 'EOF' | cc-query
+cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
 -- Query 1
 SELECT ...;
 -- Query 2
@@ -58,7 +57,7 @@ EOF
 - **Arrow operators fail on mixed data**: Use `json_extract_string(message, '$.field')` or convenience views
 - **Never re-query**: Once you have a result, remember it
 
-## Workflow: Minimize cc-query calls
+## Workflow: Minimize query calls
 
 **Target: 1-2 bash calls total.** Each call costs ~1-2 seconds overhead. Batch queries.
 
@@ -67,7 +66,7 @@ EOF
 Run this script:
 
 ```bash
-./scripts/session-summary.sh "${CLAUDE_SESSION_ID}"
+${CLAUDE_PLUGIN_ROOT}/skills/handoff/scripts/session-summary.sh "${CLAUDE_SESSION_ID}"
 ```
 
 This returns 3 tables in TSV format (separated by `---` lines) with the first row as column names:
@@ -78,7 +77,7 @@ This returns 3 tables in TSV format (separated by `---` lines) with the first ro
   - The `id` column is either the `tool_id` for tool calls or message `uuid` for other messages.
   - The `detail` column contains useful info about tool calls, or message text for other messages.
 
-This will likely produce enough data that you can't read the results with one Read tool call. Use a paging strategy to read it in full. You **MUST** read all of it.
+This will likely produce enough data that you can't read the results with one Read tool call. Use a paging strategy to read it in full. You **MUST** read all of it. Use `wc` and file size to inform how to page the file.
 
 ### Call 2: Full Content Retrieval (Only If Needed)
 
@@ -88,6 +87,10 @@ Only run additional queries for items marked `[TRUNCATED]` that are critical to 
 - Code blocks or file contents referenced in next steps
 - Assistant responses and thinking blocks
 
+**Use the `len` column to prioritize**: The `len` column shows the full content length before truncation. Higher values indicate more content was cut off. Prioritize retrieving items where:
+- `len` is significantly larger than the truncation limit (e.g., len > 1000 for a 300-char truncation)
+- The truncated preview suggests important context (error details, code, requirements)
+
 The timeline uses short IDs to save space. Use the appropriate query based on the `type` column:
 
 #### For messages (human, thinking, assistant)
@@ -96,7 +99,7 @@ The `id` is a truncated 8-char UUID. Use LIKE to match:
 
 ```bash
 # Example
-cat << 'EOF' | cc-query -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
 -- Get full human message content
 SELECT uuid, content FROM human_messages WHERE uuid::VARCHAR LIKE 'b75100a3%';
 
@@ -120,7 +123,7 @@ The `id` is the full `tool_id`. Query tool_uses and tool_results:
 
 ```bash
 # Example
-cat << 'EOF' | cc-query -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
 -- Get full tool input and result
 SELECT tu.tool_name, tu.tool_input, tr.result_content, tr.is_error
 FROM tool_uses tu
@@ -180,7 +183,7 @@ User corrections reveal important context for the next session:
 | 2 | Routine checks, minor clarifications | Omit |
 | 1 | Acknowledgments, trivial exchanges | Omit |
 
-Only include importance 3+ in the Key Conversation Flow table to keep it scannable.
+Only include importance 3+ in the Key Conversation Flow table. No less than 10% and no more that 50% of lines should be included.
 
 ## Output: Handoff Document
 
@@ -247,18 +250,18 @@ C = Tool Call
 | [uuid] | [HH:MM] | A | [response summary] |
 | [uuid] | [HH:MM] | U | [follow-up, confirmation, or correction] |
 
-To retrieve full content for any row, use cc-query with the ID:
+To retrieve full content for any row, query with the ID:
 
 ```bash
 # For messages (U, T, A) - ID is 8-char uuid prefix
-cat << 'EOF' | cc-query -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
 SELECT content FROM human_messages WHERE uuid::VARCHAR LIKE '<id>%';  -- U
 SELECT block->>'thinking' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '<id>%' AND block->>'type' = 'thinking';  -- T
 SELECT block->>'text' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '<id>%' AND block->>'type' = 'text';  -- A
 EOF
 
 # For tool calls (C) - ID is full tool_id
-cat << 'EOF' | cc-query -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
 SELECT tu.tool_input, tr.result_content FROM tool_uses tu LEFT JOIN tool_results tr ON tu.tool_id = tr.tool_use_id WHERE tu.tool_id = '<tool_id>';
 EOF
 ```

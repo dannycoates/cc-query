@@ -7,7 +7,7 @@ Use this workflow when asked to analyze a particular session by ID. This is a ba
 Run this batched query (replace `SESSION_ID`):
 
 ```bash
-cat << 'EOF' | cc-query
+cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
 -- 1. Overview
 SELECT count(*) as msgs, min(timestamp) as started, max(timestamp) as ended,
        count(DISTINCT agentId) as agents FROM messages WHERE sessionId = 'SESSION_ID';
@@ -81,7 +81,7 @@ GROUP BY agentId ORDER BY started;
 If user provides partial info, find the session first:
 
 ```bash
-cat << 'EOF' | cc-query
+cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
 -- By date
 SELECT sessionId, project, min(timestamp) as started, count(*) as msgs
 FROM messages WHERE DATE(timestamp) = '2026-01-15'

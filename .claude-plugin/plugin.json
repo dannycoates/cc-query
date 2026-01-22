@@ -1,0 +1,10 @@
+{
+  "name": "cc-query",
+  "description": "SQL REPL for querying Claude Code session data",
+  "version": "0.3.0",
+  "author": {
+    "name": "Danny Coates"
+  },
+  "repository": "https://github.com/dannycoates/cc-query",
+  "license": "MIT"
+}
