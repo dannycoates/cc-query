@@ -7,7 +7,7 @@ allowed-tools: Bash
 
 # Querying Session Data
 
-Use `node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"` to analyze Claude Code sessions with SQL (DuckDB).
+Use `${CLAUDE_PLUGIN_ROOT}/bin/cc-query` to analyze Claude Code sessions with SQL (DuckDB).
 
 ## Query Planning (Read This First)
 
@@ -20,7 +20,7 @@ Use `node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"` to analyze Claude Code sessio
 
 **Standard pattern:**
 ```bash
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query
 -- Query 1
 SELECT ...;
 -- Query 2
@@ -33,14 +33,14 @@ EOF
 ## Quick Start
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"                    # All projects
-node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" .                  # Current project
-node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" ~/code/myproject   # Specific project
+${CLAUDE_PLUGIN_ROOT}/bin/cc-query                    # All projects
+${CLAUDE_PLUGIN_ROOT}/bin/cc-query .                  # Current project
+${CLAUDE_PLUGIN_ROOT}/bin/cc-query ~/code/myproject   # Specific project
 ```
 
 **IMPORTANT**: Always use heredoc (not echo). This enables batching:
 ```bash
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query
 SELECT count(*) FROM messages;
 EOF
 ```
@@ -51,7 +51,7 @@ EOF
 
 ## Reference
 
-**Schema details**: Run `echo '.schema' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"` if you need the full schema.
+**Schema details**: Run `echo '.schema' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query` if you need the full schema.
 
 **JSON queries**: See [json-queries.md](json-queries.md) for working with the `message` JSON field.
 
@@ -202,7 +202,7 @@ SELECT tool_name, count(*) FROM tool_uses GROUP BY tool_name;  -- Simple!
 
 **Call 1: Discovery** - Find what you're looking for:
 ```bash
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query
 -- Recent sessions
 SELECT sessionId, project, min(timestamp) as started, max(timestamp) as ended, count(*) as msgs
 FROM messages GROUP BY sessionId, project ORDER BY started DESC LIMIT 10;
@@ -211,7 +211,7 @@ EOF
 
 **Call 2: Deep Analysis** - Query the specific session(s):
 ```bash
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query
 -- Replace SESSION_ID with ID from Call 1
 SELECT count(*) as msgs, count(DISTINCT agentId) as agents FROM messages WHERE sessionId = 'SESSION_ID';
 SELECT tool_name, count(*) FROM tool_uses WHERE sessionId = 'SESSION_ID' GROUP BY tool_name ORDER BY count(*) DESC;
@@ -251,7 +251,7 @@ Once you have a result, remember it. Don't run the same query again to "verify" 
 
 ### Cross-Project Overview (Single Call)
 ```bash
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query
 -- Project activity
 SELECT project, count(*) as msgs, count(DISTINCT sessionId) as sessions,
        max(timestamp) as last_activity FROM messages GROUP BY project ORDER BY last_activity DESC LIMIT 10;
@@ -285,7 +285,7 @@ ORDER BY timestamp DESC;
 
 ### Weekly Summary (Single Call)
 ```bash
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query
 -- Sessions this week
 SELECT date_trunc('day', timestamp) as day, count(DISTINCT sessionId) as sessions, count(*) as msgs
 FROM messages WHERE timestamp > now() - INTERVAL '7 days' GROUP BY day ORDER BY day;

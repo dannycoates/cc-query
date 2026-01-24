@@ -10,7 +10,7 @@ if [[ -z "$SESSION_ID" ]]; then
   exit 1
 fi
 
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "$SESSION_ID"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "$SESSION_ID"
 -- 1. Session Stats (key/value)
 WITH overview AS (
   SELECT

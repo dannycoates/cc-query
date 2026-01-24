@@ -12,14 +12,14 @@ The current session ID is `${CLAUDE_SESSION_ID}`. All queries must filter by thi
 
 ## cc-query Reference
 
-Use `node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"` to analyze Claude Code sessions with SQL (DuckDB).
+Use `${CLAUDE_PLUGIN_ROOT}/bin/cc-query` to analyze Claude Code sessions with SQL (DuckDB).
 
 ### Query Syntax
 
 Always use heredoc for batched queries:
 
 ```bash
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query
 -- Query 1
 SELECT ...;
 -- Query 2
@@ -99,7 +99,7 @@ The `id` is a truncated 8-char UUID. Use LIKE to match:
 
 ```bash
 # Example
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
 -- Get full human message content
 SELECT uuid, content FROM human_messages WHERE uuid::VARCHAR LIKE 'b75100a3%';
 
@@ -123,7 +123,7 @@ The `id` is the full `tool_id`. Query tool_uses and tool_results:
 
 ```bash
 # Example
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
 -- Get full tool input and result
 SELECT tu.tool_name, tu.tool_input, tr.result_content, tr.is_error
 FROM tool_uses tu
@@ -254,14 +254,14 @@ To retrieve full content for any row, query with the ID:
 
 ```bash
 # For messages (U, T, A) - ID is 8-char uuid prefix
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
 SELECT content FROM human_messages WHERE uuid::VARCHAR LIKE '<id>%';  -- U
 SELECT block->>'thinking' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '<id>%' AND block->>'type' = 'thinking';  -- T
 SELECT block->>'text' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '<id>%' AND block->>'type' = 'text';  -- A
 EOF
 
 # For tool calls (C) - ID is full tool_id
-cat << 'EOF' | node "${CLAUDE_PLUGIN_ROOT}/bin/cc-query.js" -s "${CLAUDE_SESSION_ID}"
+cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
 SELECT tu.tool_input, tr.result_content FROM tool_uses tu LEFT JOIN tool_results tr ON tu.tool_id = tr.tool_use_id WHERE tu.tool_id = '<tool_id>';
 EOF
 ```

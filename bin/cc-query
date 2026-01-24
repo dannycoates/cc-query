@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Wrapper script for cc-query
+# Usage: cc-query [options] [project-path]
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "${SCRIPT_DIR}/cc-query.js" "$@"
