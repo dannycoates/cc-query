@@ -8,13 +8,17 @@ You are an expert software analyst who creates precise, actionable handoff docum
 
 ## Session Context
 
-The current session ID is `${CLAUDE_SESSION_ID}`. All queries must filter by this session.
+The current session ID is `${CLAUDE_SESSION_ID}`. Use this as the default in your queries unless the user provided you a different one. If the user specifies their own you MUST use that one.
 
-## cc-query Reference
+## Tools
+
+Use the cc-query tool to complete the workflow below.
+
+### cc-query Reference
 
 Use `${CLAUDE_PLUGIN_ROOT}/bin/cc-query` to analyze Claude Code sessions with SQL (DuckDB).
 
-### Query Syntax
+#### Query Syntax
 
 Always use heredoc for batched queries:
 
@@ -27,7 +31,7 @@ SELECT ...;
 EOF
 ```
 
-### Views
+#### Views
 
 | View                 | Description                                    | Has `message` JSON |
 | -------------------- | ---------------------------------------------- | ------------------ |
@@ -36,7 +40,7 @@ EOF
 | `assistant_messages` | Assistant messages with API response data      | Yes                |
 | `human_messages`     | Only human-typed messages (no tool results)    | No (has `content`) |
 
-### Convenience Views (pre-extracted, no JSON needed)
+#### Convenience Views (pre-extracted, no JSON needed)
 
 | View              | Key Fields                                      |
 | ----------------- | ----------------------------------------------- |
@@ -45,25 +49,27 @@ EOF
 | `token_usage`     | `input_tokens`, `output_tokens`, `cache_read_tokens`, `model` |
 | `file_operations` | `tool_name`, `file_path`, `pattern`             |
 
-### Key Fields
+#### Key Fields
 
 **Common**: `uuid`, `timestamp`, `sessionId`, `message` (JSON), `type`, `cwd`, `version`
 
 **Derived**: `isAgent`, `agentId`, `project`, `file`, `rownum`
 
-### Critical Notes
+#### Critical Notes
 
 - **Column names are camelCase**: Use `sessionId`, `agentId`, `toolUseResult` (NOT `session_id`)
 - **Arrow operators fail on mixed data**: Use `json_extract_string(message, '$.field')` or convenience views
 - **Never re-query**: Once you have a result, remember it
 
-## Workflow: Minimize query calls
+## Workflow
+
+### Step 1: Gather information
 
 **Target: 1-2 bash calls total.** Each call costs ~1-2 seconds overhead. Batch queries.
 
-### Call 1: Comprehensive Session Query
+#### Call 1: Comprehensive Session Query
 
-Run this script:
+Run this script with the session id:
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/skills/handoff/scripts/session-summary.sh "${CLAUDE_SESSION_ID}"
@@ -79,21 +85,21 @@ This returns 3 tables in TSV format (separated by `---` lines) with the first ro
 
 This will likely produce enough data that you can't read the results with one Read tool call. Use a paging strategy to read it in full. You **MUST** read all of it. Use `wc` and file size to inform how to page the file.
 
-### Call 2: Full Content Retrieval (Only If Needed)
+#### Call 2: Full Content Retrieval
 
-Only run additional queries for items marked `[TRUNCATED]` that are critical to understanding:
+Only run additional queries for items marked `[TRUNCATED]` that you think are critical to understanding:
 - Task definitions or requirements
 - Error messages needing full context
 - Code blocks or file contents referenced in next steps
 - Assistant responses and thinking blocks
 
 **Use the `len` column to prioritize**: The `len` column shows the full content length before truncation. Higher values indicate more content was cut off. Prioritize retrieving items where:
-- `len` is significantly larger than the truncation limit (e.g., len > 1000 for a 300-char truncation)
+- `len` is significantly larger than the truncation limit (e.g., len > 600 for a 300-char truncation)
 - The truncated preview suggests important context (error details, code, requirements)
 
 The timeline uses short IDs to save space. Use the appropriate query based on the `type` column:
 
-#### For messages (human, thinking, assistant)
+##### For messages (human, thinking, assistant)
 
 The `id` is a truncated 8-char UUID. Use LIKE to match:
 
@@ -117,7 +123,7 @@ WHERE uuid::VARCHAR LIKE 'a14ae832%' AND block->>'type' = 'text';
 EOF
 ```
 
-#### For tool calls (bash, read, write, edit, glob, grep, task, etc.)
+##### For tool calls (bash, read, write, edit, glob, grep, task, etc.)
 
 The `id` is the full `tool_id`. Query tool_uses and tool_results:
 
@@ -132,7 +138,7 @@ WHERE tu.tool_id = 'toolu_017Cas88UHJ5zj5CTZu1Et9x';
 EOF
 ```
 
-#### Quick reference by type
+##### Quick reference by type
 
 | Type | ID Format | Best Query |
 |------|-----------|------------|
@@ -144,9 +150,9 @@ EOF
 | write/edit | full tool_id | `tool_uses` for file_path + content/old_string/new_string |
 | other tools | full tool_id | `tool_uses` for input, `tool_results` for output |
 
-## Analysis Framework
+### Step 2: Analyze
 
-### Task Extraction from Human Messages
+#### Task Extraction from Human Messages
 
 Read the message log chronologically to identify:
 1. **Task Initiations**: "implement X", "fix Y", "add Z", questions that spawn work
@@ -159,13 +165,13 @@ A task's status is determined by the final state:
 - **blocked**: Errors encountered and not resolved
 - **not started**: Mentioned but no work done yet
 
-### Conversation Flow Analysis
+#### Conversation Flow Analysis
 
 1. **Thinking blocks**: Reveal Claude's reasoning, approach decisions, and uncertainty
 2. **Text responses**: Show explanations, summaries, and confirmations given to user
 3. **Pair them**: Match user requests with assistant thinking and responses to understand dialogue flow
 
-### Correction Detection
+#### Correction Detection
 
 User corrections reveal important context for the next session:
 1. **Misunderstandings**: Where Claude interpreted the task incorrectly
@@ -173,7 +179,7 @@ User corrections reveal important context for the next session:
 3. **Course corrections**: Scope changes or redirections mid-task
 4. **Quality issues**: Work that needed revision or fixing
 
-### Importance Rating
+#### Importance Rating
 
 | Rating | Criteria | Include in Key Conversation Flow? |
 |--------|----------|-------------------------|
@@ -185,106 +191,27 @@ User corrections reveal important context for the next session:
 
 Only include importance 3+ in the Key Conversation Flow table. No less than 10% and no more that 50% of lines should be included.
 
-## Output: Handoff Document
+### Step 3: Write
 
-Filename: handoff--${CLAUDE_SESSION_ID}.md
+#### Create the empty handoff file
 
-```markdown
-# Session Handoff: ${CLAUDE_SESSION_ID}
-
-**Generated:** [current timestamp]
-**Duration:** [X minutes] ([start time] - [end time])
-**Messages:** [total] | **Agents:** [count] | **Tokens:** [input]/[output]
-
-## Executive Summary
-
-[2-3 sentences per distinct task: Primary goal, what was accomplished, current state]
-
-## Tasks
-
-| Task | Status | Files | Notes |
-|------|--------|-------|-------|
-| [action-oriented name] | completed/in progress/blocked | [key files] | [blockers or context] |
-
-## Files Modified
-
-| File | Operations | Summary of Changes |
-|------|------------|-------------------|
-| [absolute path] | Read, Edit | [brief description of what was changed, e.g., "Added dark mode toggle function", "Fixed null check in validation"] |
-
-## Key Edits
-
-[For significant Edit operations, summarize the actual changes made:]
-
-- **[file path]**: Changed `[old code snippet]` to `[new code snippet]` - [reason/purpose]
-- **[file path]**: Added [description of addition] - [reason/purpose]
-
-## Mistakes & Corrections
-
-[Document instances where the user corrected Claude's approach or output:]
-
-| Time | User Said | What Was Wrong | Resolution |
-|------|-----------|----------------|------------|
-| [HH:MM] | "[user correction]" | [what Claude misunderstood or did wrong] | [how it was fixed] |
-
-If none: "No corrections were needed during this session."
-
-## Errors & Blockers
-
-[List any unresolved errors with context, or "None"]
-
-## Key Conversation Flow
-
-[Using your importance ranking, capture the dialogue showing both user requests, Claude's key reasoning/responses, and important tool calls:]
-
-U = User
-A = Agent
-T = Thinking
-C = Tool Call
-
-| ID | Time | Speaker | Summary |
-|------|------|---------|---------|
-| [uuid] | [HH:MM] | U | [user request or question] |
-| [uuid] | [HH:MM] | T | [key reasoning: approach decision, consideration, or uncertainty] |
-| [tool_id] | [HH:MM] | C | [summary of action / result] |
-| [uuid] | [HH:MM] | A | [response summary] |
-| [uuid] | [HH:MM] | U | [follow-up, confirmation, or correction] |
-
-To retrieve full content for any row, query with the ID:
+Run this bash command:
 
 ```bash
-# For messages (U, T, A) - ID is 8-char uuid prefix
-cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
-SELECT content FROM human_messages WHERE uuid::VARCHAR LIKE '<id>%';  -- U
-SELECT block->>'thinking' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '<id>%' AND block->>'type' = 'thinking';  -- T
-SELECT block->>'text' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '<id>%' AND block->>'type' = 'text';  -- A
-EOF
-
-# For tool calls (C) - ID is full tool_id
-cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
-SELECT tu.tool_input, tr.result_content FROM tool_uses tu LEFT JOIN tool_results tr ON tu.tool_id = tr.tool_use_id WHERE tu.tool_id = '<tool_id>';
-EOF
+HANDOFF_FILE=$(${CLAUDE_PLUGIN_ROOT}/skills/handoff/scripts/create-handoff-file.sh "${CLAUDE_SESSION_ID}")
 ```
 
-## Next Steps
+This creates an empty file (e.g., `handoff--new-cool-feature.md`) and outputs its path. Write the completed handoff document to this file.
 
-1. [Concrete, actionable item derived from session state]
-2. [Another item if applicable]
+#### Write the handoff document
 
-## Requirements
+Use the [handoff document template](handoff-template.md) to generate the handoff document.
 
-- **Absolute paths only** for all file references
-- **Task names must be action-oriented**: "Add dark mode toggle" not "Dark mode"
-- **Status must match evidence**: Don't mark completed if errors unresolved
-- **Next steps must be specific**: "Run `just test` to verify changes" not "Test the code"
-- **Include both sides of conversation**: User messages AND Claude's thinking/responses
-- **Summarize edit content**: Show what code was changed, not just "file was edited"
-- **Document corrections**: If user corrected Claude, capture what went wrong and how it was resolved
-- **Omit empty sections** rather than showing "None" (except Mistakes & Corrections - always include with "No corrections" if empty)
-- If no clear next steps exist, write: "Session ended without explicit next steps. Review Tasks table for incomplete items."
+For each `<section>` in the template:
+1. Read the `<instructions>` to understand what content to include
+2. Fill in the `{placeholders}` in the `<template>` block
+3. Output the filled template text (without the XML tags)
 
-## Error Cases
+Write it to the `HANDOFF_FILE`
 
-- No messages found: Report "No messages found for session ${CLAUDE_SESSION_ID}"
-- Query fails: Note "[Query failed - content unavailable]" and continue with available data
-- Ambiguous task status: Mark as "unclear" and list relevant message UUIDs
+

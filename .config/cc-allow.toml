@@ -4,12 +4,49 @@
 # This provides sensible defaults for common *nix commands and coreutils.
 # Project-level configs can add stricter rules on top of this.
 
-[policy]
+version = "2.0"
+
+# ============================================================================
+# ALIASES
+# ============================================================================
+# Define reusable pattern aliases to reduce repetition
+
+[aliases]
+project = "path:$PROJECT_ROOT/**"
+plugin = "path:$CLAUDE_PLUGIN_ROOT/**"
+sensitive-read = ["path:$HOME/.ssh/**", "path:**/*.key", "path:**/*.pem"]
+sensitive-write = [
+    "path:$HOME/.*",
+    "path:/etc/**",
+    "path:/usr/**",
+    "path:/bin/**",
+    "path:/sbin/**",
+    "path:/lib/**",
+    "path:/lib64/**",
+    "path:/var/**",
+    "path:/boot/**",
+    "path:/root/**",
+]
+
+# ============================================================================
+# BASH TOOL CONFIGURATION
+# ============================================================================
+
+[bash]
 default = "ask"                    # defer unmatched commands to Claude Code
 dynamic_commands = "ask"           # $VAR or $(cmd) as command names
 default_message = "Command not in allow list"
-# allowed_paths = ["/usr/bin", "/bin", "/usr/local/bin"]  # optional: restrict command search paths
 unresolved_commands = "ask"        # "ask" or "deny" for commands not found in PATH
+
+# ============================================================================
+# SHELL CONSTRUCTS
+# ============================================================================
+
+[bash.constructs]
+function_definitions = "deny"      # prevent command shadowing
+background = "ask"                 # background jobs need review
+subshells = "ask"                  # subshells need review
+heredocs = "allow"                 # heredocs are generally safe
 
 # ============================================================================
 # ALLOWED COMMANDS
@@ -18,16 +55,17 @@ unresolved_commands = "ask"        # "ask" or "deny" for commands not found in P
 # Note: Dangerous variations (like rm -rf) are blocked by specific rules below.
 #
 # Command names can use path: prefix to match by resolved filesystem path:
-#   "path:$PROJECT_ROOT/bin/*"  - allow project-local binaries
-#   "path:/usr/bin/git"         - allow git only from /usr/bin
+#   "path:$PROJECT_ROOT/bin/*"      - allow project-local binaries
+#   "path:$CLAUDE_PLUGIN_ROOT/**"   - allow plugin/skill-local binaries
+#   "path:/usr/bin/git"             - allow git only from /usr/bin
 
-[commands.allow]
-names = [
+[bash.allow]
+commands = [
     # -------------------------------------------------------------------------
     # Plugin/Skill Binaries
     # -------------------------------------------------------------------------
     "path:$CLAUDE_PLUGIN_ROOT/**",  # allow binaries from loaded skill/plugin
-
+    "path:$HOME/**/cc-query",
 
     # -------------------------------------------------------------------------
     # File & Directory Navigation
@@ -199,9 +237,7 @@ names = [
     "md5sum", "sha1sum", "sha256sum", "sha512sum",  # checksums
     "base64",                       # base64 encoding
     "nix", "nix-env", "nix-shell",  # Nix
-
-    # Mine
-    "path:$PROJECT_ROOT/bin/cc-query",
+    "jq",                           # JSON processor
 ]
 
 # ============================================================================
@@ -209,8 +245,8 @@ names = [
 # ============================================================================
 # These commands are categorically dangerous and should never run automatically.
 
-[commands.deny]
-names = [
+[bash.deny]
+commands = [
     # Privilege escalation
     "sudo", "su", "doas", "pkexec",
     # Disk/filesystem operations
@@ -221,7 +257,6 @@ names = [
     "lvm", "pvcreate", "vgcreate", "lvcreate",
     # System control
     "shutdown", "reboot", "halt", "poweroff", "init", "telinit",
-    "systemctl",                    # can stop critical services
     # User/group management
     "useradd", "userdel", "usermod",
     "groupadd", "groupdel", "groupmod",
@@ -237,17 +272,19 @@ names = [
     "modprobe", "insmod", "rmmod",  # kernel modules
     "update-grub", "grub-install",
 ]
-message = "Dangerous system command blocked"
+message = "{{.Command}} blocked - dangerous system command"
 
 # ============================================================================
-# SHELL CONSTRUCTS
+# REDIRECTS
 # ============================================================================
+# Redirects respect file rules - output redirects (>, >>) check Write rules,
+# input redirects (<) check Read rules.
 
-[constructs]
-function_definitions = "deny"      # prevent command shadowing
-background = "ask"                 # background jobs need review
-subshells = "ask"                  # subshells need review
-heredocs = "allow"                 # heredocs are generally safe
+[bash.redirects]
+respect_file_rules = true
+
+[[bash.redirects.allow]]
+paths = ["/dev/null"]
 
 # ============================================================================
 # SPECIFIC RULES
@@ -255,223 +292,125 @@ heredocs = "allow"                 # heredocs are generally safe
 # Fine-grained control for commands that are generally safe but have
 # dangerous modes.
 
-# --- rm: Allow recursive deletion within project ---
-[[rule]]
-command = "rm"
-action = "allow"
-[rule.args]
-any_match = ["flags:r", "--recursive"]
-all_match = ["path:$PROJECT_ROOT/**"]
+[[bash.allow.node]]
+args.any = ["alias:project"]
 
-# --- rm: Block recursive deletion outside project ---
-[[rule]]
-command = "rm"
-action = "deny"
-message = "Recursive rm only allowed within project directory"
-[rule.args]
-any_match = ["flags:r", "--recursive"]
+[[bash.allow.npm.run]]
 
-# --- rm: Allow non-recursive rm within project ---
-[[rule]]
-command = "rm"
-action = "allow"
-[rule.args]
-any_match = ["path:$PROJECT_ROOT/**"]
+# --- systemctl: Allow status checks ---
+[[bash.allow.systemctl.status]]
 
-# --- rm: Ask for non-recursive rm outside project ---
-[[rule]]
-command = "rm"
-action = "ask"
-message = "Deleting files outside project directory"
+# --- rm: Block recursive deletion ---
+[[bash.deny.rm]]
+message = "{{.ArgsStr}} - recursive deletion not allowed"
+args.any = ["flags:r", "--recursive"]
+
+# --- rm: Allow non-recursive rm ---
+[[bash.allow.rm]]
 
 # --- rmdir: Allow (only removes empty directories) ---
-[[rule]]
-command = "rmdir"
-action = "allow"
+[[bash.allow.rmdir]]
 
 # --- chmod: Block making files executable ---
-[[rule]]
-command = "chmod"
-action = "ask"
-message = "Making files executable requires review"
-[rule.args]
-any_match = ["re:\\+x", "re:[0-7][1357][0-7]", "re:[0-7][0-7][1357]"]
+[[bash.deny.chmod]]
+message = "{{.ArgsStr}} - making files executable requires review"
+args.any = ["re:\\+x", "re:[0-7][1357][0-7]", "re:[0-7][0-7][1357]"]
 
 # --- chmod: Allow other chmod operations ---
-[[rule]]
-command = "chmod"
-action = "allow"
+[[bash.allow.chmod]]
 
-# --- chown/chgrp: Always ask (ownership changes are sensitive) ---
-[[rule]]
-command = "chown"
-action = "ask"
+# --- chown/chgrp: Always deny (ownership changes are sensitive) ---
+[[bash.deny.chown]]
+message = "{{.ArgsStr}} - ownership changes not allowed"
 
-[[rule]]
-command = "chgrp"
-action = "ask"
+[[bash.deny.chgrp]]
+message = "{{.ArgsStr}} - group changes not allowed"
 
 # --- git: Block force push ---
-[[rule]]
-command = "git"
-action = "deny"
-message = "Force push not allowed"
-[rule.args]
-any_match = ["--force", "flags:f", "--force-with-lease"]
-contains = ["push"]
+[[bash.deny.git.push]]
+message = "{{.ArgsStr}} - force push not allowed"
+args.any = ["--force", "flags:f", "--force-with-lease"]
 
 # --- git: Block hard reset ---
-[[rule]]
-command = "git"
-action = "ask"
-message = "Are you sure you want to hard reset? You may lose work"
-[rule.args]
-contains = ["reset", "--hard"]
+[[bash.deny.git.reset]]
+message = "{{.ArgsStr}} - hard reset may lose work"
+args.contains = ["--hard"]
 
 # --- git: Block clean -f (force delete untracked files) ---
-[[rule]]
-command = "git"
-action = "ask"
-message = "git clean requires review"
-[rule.args]
-contains = ["clean"]
-any_match = ["flags:f", "--force"]
+[[bash.deny.git.clean]]
+message = "{{.ArgsStr}} - git clean requires review"
+args.any = ["flags:f", "--force"]
 
 # --- sed/awk: Block in-place editing ---
-[[rule]]
-command = "sed"
-action = "deny"
-message = "In-place sed editing not allowed - use Edit tool"
-[rule.args]
-any_match = ["flags:i", "--in-place"]
+[[bash.deny.sed]]
+message = "{{.ArgsStr}} - in-place editing not allowed, use Edit tool"
+args.any = ["flags:i", "--in-place"]
 
-[[rule]]
-command = "awk"
-action = "deny"
-message = "In-place awk editing not allowed - use Edit tool"
-[rule.args]
-any_match = ["flags:i"]
+[[bash.deny.awk]]
+message = "{{.ArgsStr}} - in-place editing not allowed, use Edit tool"
+args.any = ["flags:i"]
 
 # --- curl/wget: Block piping to shell ---
-[[rule]]
-command = "bash"
-action = "deny"
-message = "Cannot pipe to bash from download commands"
-[rule.pipe]
-from = ["curl", "wget", "http"]
+[[bash.deny.bash]]
+message = "{{.Command}} receiving from {{index .PipesFrom 0}} - piping to shell not allowed"
+pipe.from = ["curl", "wget", "http"]
 
-[[rule]]
-command = "sh"
-action = "deny"
-message = "Cannot pipe to sh from download commands"
-[rule.pipe]
-from = ["curl", "wget", "http"]
+[[bash.deny.sh]]
+message = "{{.Command}} receiving from {{index .PipesFrom 0}} - piping to shell not allowed"
+pipe.from = ["curl", "wget", "http"]
 
-[[rule]]
-command = "zsh"
-action = "deny"
-message = "Cannot pipe to zsh from download commands"
-[rule.pipe]
-from = ["curl", "wget", "http"]
+[[bash.deny.zsh]]
+message = "{{.Command}} receiving from {{index .PipesFrom 0}} - piping to shell not allowed"
+pipe.from = ["curl", "wget", "http"]
 
 # --- docker/podman: Block privileged containers ---
-[[rule]]
-command = "docker"
-action = "deny"
-message = "Privileged containers not allowed"
-[rule.args]
-any_match = ["--privileged"]
+[[bash.deny.docker]]
+message = "{{.ArgsStr}} - privileged containers not allowed"
+args.any = ["--privileged"]
 
-[[rule]]
-command = "podman"
-action = "deny"
-message = "Privileged containers not allowed"
-[rule.args]
-any_match = ["--privileged"]
+[[bash.deny.podman]]
+message = "{{.ArgsStr}} - privileged containers not allowed"
+args.any = ["--privileged"]
 
 # --- ssh: Block with -o options that could be dangerous ---
-[[rule]]
-command = "ssh"
-action = "ask"
-[rule.args]
-any_match = ["flags:o"]
-
-# --- Example: Allow project-local scripts by resolved path ---
-# [[rule]]
-# command = "path:$PROJECT_ROOT/scripts/*"
-# action = "allow"
-
-# --- Example: Deny commands from untrusted directories ---
-# [[rule]]
-# command = "path:/tmp/**"
-# action = "deny"
-# message = "Commands from /tmp not allowed"
+[[bash.deny.ssh]]
+message = "{{.ArgsStr}} - ssh with custom options requires review"
+args.any = ["flags:o"]
 
 # ============================================================================
-# REDIRECT RULES
+# FILE TOOL PERMISSIONS (Read, Edit, Write)
 # ============================================================================
-# Block writes to sensitive locations.
+# Control Claude Code's Read, Edit, and Write file tools.
+# Also controls bash commands that access files and redirects.
+# Evaluation order: deny -> allow -> default (deny always wins)
 
-# Allow redirecting to /dev/null
-[[redirect]]
-action = "allow"
-[redirect.to]
-exact = ["/dev/null"]
+[read]
+default = "ask"  # defer to Claude Code when no rules match
 
-# Block writes to system directories
-[[redirect]]
-action = "deny"
-message = "Cannot write to system directories"
-[redirect.to]
-pattern = [
-    "path:/etc/**",
-    "path:/usr/**",
-    "path:/bin/**",
-    "path:/sbin/**",
-    "path:/lib/**",
-    "path:/lib64/**",
-    "path:/var/**",
-    "path:/boot/**",
-    "path:/root/**",
-]
+[read.allow]
+paths = ["alias:project", "alias:plugin", "path:/tmp/**", "path:$HOME/.local/log/cc-proxy/cc-proxy.log"]
 
-# Block writes to shell configs
-[[redirect]]
-action = "deny"
-message = "Cannot modify shell configuration files"
-[redirect.to]
-pattern = [
-    # Shell rc files
-    "path:$HOME/.*rc",
-    "path:$HOME/.*shrc",
-    # Profile files
-    "path:$HOME/.*profile",
-    "path:$HOME/.*_profile",
-    # Login/logout files
-    "path:$HOME/.*login",
-    "path:$HOME/.*_login",
-    "path:$HOME/.*logout",
-    "path:$HOME/.*_logout",
-    # System-wide shell configs (already blocked by /etc/**, but explicit)
-    "path:/etc/profile",
-    "path:/etc/profile.d/**",
-    "path:/etc/bash*",
-    "path:/etc/zsh/**",
-]
+[read.deny]
+paths = ["alias:sensitive-read"]
+message = "Cannot read {{.FileName}} - sensitive file"
 
-# Block appending to shell configs
-[[redirect]]
-action = "deny"
-append = true
-message = "Cannot append to shell configuration"
-[redirect.to]
-pattern = [
-    "path:$HOME/.*rc",
-    "path:$HOME/.*shrc",
-    "path:$HOME/.*profile",
-    "path:$HOME/.*_profile",
-    "path:$HOME/.*login",
-    "path:$HOME/.*_login",
-    "path:$HOME/.*logout",
-    "path:$HOME/.*_logout",
-]
+[edit]
+default = "ask"
+
+[edit.allow]
+paths = ["alias:project"]
+
+[edit.deny]
+paths = ["path:$HOME/.*"]
+message = "Cannot edit {{.FileName}} - sensitive file"
+
+# Also applies to output redirects (>, >>) when bash.redirects.respect_file_rules = true
+[write]
+default = "ask"
+
+[write.allow]
+paths = ["alias:project", "path:/tmp/**"]
+
+[write.deny]
+paths = ["alias:sensitive-write"]
+message = "Cannot write to {{.FilePath}} - system directory"
