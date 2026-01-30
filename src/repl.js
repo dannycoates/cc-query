@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { QuerySession } from "./query-session.js";
+import { RawQuerySession } from "./raw-query-session.js";
 
 const HISTORY_FILE = join(homedir(), ".cc_query_history");
 const HISTORY_SIZE = 100;
@@ -42,6 +43,8 @@ async function saveHistory(history) {
 /**
  * @typedef {object} ReplOptions
  * @property {string} [sessionFilter] - Session ID prefix filter
+ * @property {boolean} [rawMode] - Query raw API logs instead of session data
+ * @property {string|null} [rawFile] - Custom path to raw log file
  */
 
 /**
@@ -108,8 +111,83 @@ Useful functions:
 }
 
 /**
+ * Get help text for .help command in raw mode
+ * @returns {string}
+ */
+function getRawHelpText() {
+  return `
+Commands:
+  .help, .h      Show this help
+  .schema, .s    Show schemas for all views
+  .schema <view> Show schema for a specific view
+  .quit, .q      Exit
+
+Views:
+  requests          All API requests with model, messages, tools, etc.
+  responses         All API responses with content
+  request_messages  Unnested messages from requests (role, content)
+  request_tools     Unnested tools from requests (name, schema)
+  model_usage       Aggregated stats by model
+  raw_entries       Raw JSON for each log entry
+
+Example queries:
+  -- Count requests by model
+  SELECT model, count(*) as cnt FROM requests GROUP BY model ORDER BY cnt DESC;
+
+  -- Recent requests
+  SELECT rownum, model, message_count, tool_count FROM requests ORDER BY rownum DESC LIMIT 10;
+
+  -- Model usage summary
+  SELECT * FROM model_usage;
+
+  -- Messages in a specific request
+  SELECT role, content FROM request_messages WHERE rownum = 123;
+
+  -- Tools available in requests
+  SELECT DISTINCT name FROM request_tools ORDER BY name;
+
+  -- Requests with most messages
+  SELECT rownum, model, message_count FROM requests ORDER BY message_count DESC LIMIT 10;
+
+JSON field access (DuckDB syntax):
+  messages->'field'       Access JSON field (returns JSON)
+  messages->>'field'      Access JSON field as string
+  content[1]              Get first element of array (1-indexed)
+
+Useful functions:
+  json_array_length(arr)  Count elements in JSON array
+  UNNEST(arr)             Expand array into rows
+`;
+}
+
+/** @type {string[]} */
+const SESSION_VIEWS = [
+  "messages",
+  "user_messages",
+  "human_messages",
+  "assistant_messages",
+  "system_messages",
+  "raw_messages",
+  "tool_uses",
+  "tool_results",
+  "token_usage",
+  "bash_commands",
+  "file_operations",
+];
+
+/** @type {string[]} */
+const RAW_VIEWS = [
+  "requests",
+  "responses",
+  "request_messages",
+  "request_tools",
+  "model_usage",
+  "raw_entries",
+];
+
+/**
  * Execute a SQL query and print results
- * @param {QuerySession} qs
+ * @param {QuerySession | RawQuerySession} qs
  * @param {string} query
  */
 async function executeQuery(qs, query) {
@@ -126,10 +204,11 @@ async function executeQuery(qs, query) {
 /**
  * Handle dot commands
  * @param {string} command
- * @param {QuerySession} qs
+ * @param {QuerySession | RawQuerySession} qs
+ * @param {boolean} rawMode
  * @returns {Promise<boolean>} true if should exit
  */
-async function handleDotCommand(command, qs) {
+async function handleDotCommand(command, qs, rawMode) {
   const cmd = command.toLowerCase();
 
   if (cmd === ".quit" || cmd === ".exit" || cmd === ".q") {
@@ -139,24 +218,12 @@ async function handleDotCommand(command, qs) {
   }
 
   if (cmd === ".help" || cmd === ".h") {
-    console.log(getHelpText());
+    console.log(rawMode ? getRawHelpText() : getHelpText());
     return false;
   }
 
   if (cmd === ".schema" || cmd === ".s") {
-    const views = [
-      "messages",
-      "user_messages",
-      "human_messages",
-      "assistant_messages",
-      "system_messages",
-      "raw_messages",
-      "tool_uses",
-      "tool_results",
-      "token_usage",
-      "bash_commands",
-      "file_operations",
-    ];
+    const views = rawMode ? RAW_VIEWS : SESSION_VIEWS;
     for (const view of views) {
       console.log(`\n=== ${view} ===`);
       await executeQuery(qs, `DESCRIBE ${view}`);
@@ -189,10 +256,11 @@ async function readStdin() {
 /**
  * Run queries from piped input (non-interactive mode)
  * Uses TSV output format with --- separator between queries
- * @param {QuerySession} qs
+ * @param {QuerySession | RawQuerySession} qs
  * @param {string} input
+ * @param {boolean} rawMode
  */
-async function runPipedQueries(qs, input) {
+async function runPipedQueries(qs, input, rawMode) {
   // Split by semicolons, keeping the semicolon with each statement
   const statements = input
     .split(/(?<=;)/)
@@ -203,7 +271,7 @@ async function runPipedQueries(qs, input) {
 
   for (const stmt of statements) {
     if (stmt.startsWith(".")) {
-      const shouldExit = await handleDotCommand(stmt, qs);
+      const shouldExit = await handleDotCommand(stmt, qs, rawMode);
       if (shouldExit) break;
     } else {
       try {
@@ -228,17 +296,35 @@ async function runPipedQueries(qs, input) {
  * @param {ReplOptions} [options]
  */
 export async function startRepl(claudeProjectsDir, options = {}) {
-  const { sessionFilter = "" } = options;
+  const { sessionFilter = "", rawMode = false, rawFile = null } = options;
 
-  // Create query session (handles file discovery and view creation)
-  const qs = await QuerySession.create(claudeProjectsDir, sessionFilter);
-  const { sessionCount, agentCount, projectCount } = qs.info;
+  // Create query session based on mode
+  /** @type {QuerySession | RawQuerySession} */
+  let qs;
+  /** @type {string} */
+  let loadedMessage;
+  /** @type {string} */
+  let filterMessage = "";
+
+  if (rawMode) {
+    qs = await RawQuerySession.create(rawFile);
+    const { requestCount, responseCount, filePath } = qs.info;
+    loadedMessage = `Loaded ${requestCount} request(s), ${responseCount} response(s) from ${filePath}`;
+  } else {
+    qs = await QuerySession.create(claudeProjectsDir, sessionFilter);
+    const { sessionCount, agentCount, projectCount } = qs.info;
+    const projectInfo = projectCount > 1 ? `${projectCount} project(s), ` : "";
+    loadedMessage = `Loaded ${projectInfo}${sessionCount} session(s), ${agentCount} agent file(s)`;
+    if (sessionFilter) {
+      filterMessage = `Filter: ${sessionFilter}*`;
+    }
+  }
 
   // Check if input is piped (non-TTY)
   if (!process.stdin.isTTY) {
     try {
       const input = await readStdin();
-      await runPipedQueries(qs, input);
+      await runPipedQueries(qs, input, rawMode);
     } finally {
       qs.cleanup();
     }
@@ -247,12 +333,9 @@ export async function startRepl(claudeProjectsDir, options = {}) {
 
   // Interactive mode
   try {
-    const projectInfo = projectCount > 1 ? `${projectCount} project(s), ` : "";
-    console.log(
-      `Loaded ${projectInfo}${sessionCount} session(s), ${agentCount} agent file(s)`,
-    );
-    if (sessionFilter) {
-      console.log(`Filter: ${sessionFilter}*`);
+    console.log(loadedMessage);
+    if (filterMessage) {
+      console.log(filterMessage);
     }
     console.log('Type ".help" for usage hints.\n');
 
@@ -302,7 +385,7 @@ export async function startRepl(claudeProjectsDir, options = {}) {
       }
       // Handle dot commands
       else if (trimmed.startsWith(".")) {
-        const shouldExit = await handleDotCommand(trimmed, qs);
+        const shouldExit = await handleDotCommand(trimmed, qs, rawMode);
         if (shouldExit) break;
       }
       // Handle SQL queries
