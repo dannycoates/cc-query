@@ -16,10 +16,14 @@ Extract from session-summary.sh output:
 - Total message count
 - Agent count (from agents row)
 - Token totals (input_tokens, output_tokens)
+
+If the conversation is a handoff from a previous session include it's session id
 </instructions>
 <template>
-# Session Handoff: ${CLAUDE_SESSION_ID}
+# Session Handoff: 
 
+**Session ID:** ${CLAUDE_SESSION_ID}
+**Previous Handoff:** {previous_handoff_session_id}
 **Generated:** {current_timestamp}
 **Duration:** {duration_minutes} minutes ({start_time} - {end_time})
 **Messages:** {total_messages} | **Agents:** {agent_count} | **Tokens:** {input_tokens}/{output_tokens}
@@ -39,6 +43,18 @@ Keep it concise but complete enough for someone to understand the session at a g
 ## Executive Summary
 
 {summary_paragraphs}
+</template>
+</section>
+
+<section name="Plan">
+<instructions>
+If any plan file(s) were used include the full path to them
+</instructions>
+<template>
+## Plan
+
+Refs:
+  - `{plan_file}`
 </template>
 </section>
 
@@ -66,15 +82,19 @@ Use action-oriented task names: "Add dark mode toggle" not "Dark mode"
 </template>
 </section>
 
-<section name="Files Modified">
+<section name="Files of Interest">
 <instructions>
 From the touched files table:
-- Include files with Edit (e) or Write (w) operations
+- Include files with Read (r) Edit (e) or Write (w) operations
 - Provide brief description of what changed
 - Use absolute paths
 </instructions>
 <template>
-## Files Modified
+## Files of Interest
+
+- r = Read
+- e = Edit
+- w = Write
 
 | File | Operations | Summary of Changes |
 |------|------------|-------------------|
@@ -133,6 +153,38 @@ OMIT this entire section if there are no errors or blockers.
 </template>
 </section>
 
+<section>
+## Messages
+
+Speaker codes:
+- U = User message
+- A = Agent/Assistant response
+- T = Thinking block
+- C = Tool Call
+
+</section>
+
+<section name="Longest Messages">
+<instructions>
+Use the output from the longest messages query to populate this table.
+
+Speaker codes:
+- U = User message
+- A = Agent/Assistant response
+- T = Thinking block
+- C = Tool Call
+
+</instructions>
+<template>
+### Longest Messages
+
+| ID | Time | Speaker | Length | Summary |
+|----|------|---------|--------|---------|
+| {id} | {time} | {speaker} | {length} | {summary} |
+
+</template>
+<section>
+
 <section name="Key Conversation Flow">
 <instructions>
 Capture the dialogue using importance rating (include only 3+ importance):
@@ -155,13 +207,7 @@ Importance Rating Guide:
 | 1 | Acknowledgments, trivial exchanges | Omit |
 </instructions>
 <template>
-## Key Conversation Flow
-
-Speaker codes:
-- U = User message
-- A = Agent/Assistant response
-- T = Thinking block
-- C = Tool Call
+### Key Conversation Flow
 
 | ID | Time | Speaker | Summary |
 |----|------|---------|---------|

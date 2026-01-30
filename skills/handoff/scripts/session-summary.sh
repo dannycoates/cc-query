@@ -180,4 +180,73 @@ FROM (
   LEFT JOIN tool_results tr ON tu.tool_id = tr.tool_use_id
 )
 ORDER BY timestamp ASC;
+
+-- 4. Longest Messages (top 3 per type: U=human, A=assistant, T=thinking, C=tool call)
+WITH assistant_array_msgs AS (
+  SELECT * FROM assistant_messages
+  WHERE json_type(message->'content') = 'ARRAY'
+),
+all_messages AS (
+  -- Human messages
+  SELECT timestamp, left(uuid::VARCHAR, 8) as id, 'U' as speaker,
+         length(content) as len,
+         CASE WHEN length(content) > 300 THEN left(content, 300) || '...[TRUNCATED]'
+              ELSE content END as summary
+  FROM human_messages
+
+  UNION ALL
+
+  -- Assistant thinking blocks
+  SELECT m.timestamp, left(m.uuid::VARCHAR, 8) as id, 'T' as speaker,
+         length(block->>'thinking') as len,
+         CASE WHEN length(block->>'thinking') > 300
+              THEN left(block->>'thinking', 300) || '...[TRUNCATED]'
+              ELSE block->>'thinking' END as summary
+  FROM assistant_array_msgs m,
+  LATERAL UNNEST(CAST(m.message->'content' AS JSON[])) as t(block)
+  WHERE block->>'type' = 'thinking'
+
+  UNION ALL
+
+  -- Assistant text responses
+  SELECT m.timestamp, left(m.uuid::VARCHAR, 8) as id, 'A' as speaker,
+         length(block->>'text') as len,
+         CASE WHEN length(block->>'text') > 300
+              THEN left(block->>'text', 300) || '...[TRUNCATED]'
+              ELSE block->>'text' END as summary
+  FROM assistant_array_msgs m,
+  LATERAL UNNEST(CAST(m.message->'content' AS JSON[])) as t(block)
+  WHERE block->>'type' = 'text'
+
+  UNION ALL
+
+  -- Tool calls
+  SELECT tu.timestamp, tu.tool_id as id, 'C' as speaker,
+         CASE
+           WHEN tu.tool_name = 'Bash' THEN COALESCE(length(tu.tool_input->>'command'), 0) + COALESCE(length(tr.result_content), 0)
+           WHEN tu.tool_name = 'Write' THEN length(tu.tool_input->>'content')
+           WHEN tu.tool_name = 'Edit' THEN COALESCE(length(tu.tool_input->>'old_string'), 0) + COALESCE(length(tu.tool_input->>'new_string'), 0)
+           WHEN tu.tool_name = 'Read' THEN length(tr.result_content)
+           WHEN tu.tool_name = 'Task' THEN length(tu.tool_input->>'prompt')
+           ELSE COALESCE(length(tr.result_content), 0)
+         END as len,
+         tu.tool_name || ': ' || CASE
+           WHEN tu.tool_name IN ('Read', 'Write', 'Edit') THEN tu.tool_input->>'file_path'
+           WHEN tu.tool_name = 'Bash' THEN left(tu.tool_input->>'command', 100)
+           WHEN tu.tool_name = 'Task' THEN tu.tool_input->>'description'
+           ELSE COALESCE(left(tr.result_content, 100), '')
+         END as summary
+  FROM tool_uses tu
+  LEFT JOIN tool_results tr ON tu.tool_id = tr.tool_use_id
+),
+ranked AS (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY speaker ORDER BY len DESC) as rn
+  FROM all_messages
+  WHERE len IS NOT NULL
+)
+SELECT strftime(timestamp, '%m-%d %H:%M:%S') as timestamp, id, speaker, len,
+       replace(replace(summary, chr(10), '\\n'), chr(13), '') as summary
+FROM ranked
+WHERE rn <= 3
+ORDER BY speaker, rn;
 EOF

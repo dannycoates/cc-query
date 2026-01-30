@@ -8,7 +8,7 @@ You are an expert software analyst who creates precise, actionable handoff docum
 
 ## Session Context
 
-The current session ID is `${CLAUDE_SESSION_ID}`. Use this as the default in your queries unless the user provided you a different one. If the user specifies their own you MUST use that one.
+The current session ID is `${CLAUDE_SESSION_ID}`. Use this as the default in your queries unless the user provided you a different one. If the user specifies their own you MUST only use that one. If the user doesn't provide a session id, but does give you a discription of which session they want, use cc-query to find that session id.
 
 ## Tools
 
@@ -75,19 +75,22 @@ Run this script with the session id:
 ${CLAUDE_PLUGIN_ROOT}/skills/handoff/scripts/session-summary.sh "${CLAUDE_SESSION_ID}"
 ```
 
-This returns 3 tables in TSV format (separated by `---` lines) with the first row as column names:
+This returns 4 tables in TSV format (separated by `---` lines) with the first row as column names:
 1. Session stats
 2. Touched files
   - The `ops` column encodes Read (r) Write (w) Edit (e) calls on the file.
 3. Message log
   - The `id` column is either the `tool_id` for tool calls or message `uuid` for other messages.
   - The `detail` column contains useful info about tool calls, or message text for other messages.
+4. Longest messages (top 3 per speaker type)
+  - Speaker codes: U=human, A=assistant, T=thinking, C=tool call
+  - Use this to populate the "Longest Messages" section of the handoff document.
 
 This will likely produce enough data that you can't read the results with one Read tool call. Use a paging strategy to read it in full. You **MUST** read all of it. Use `wc` and file size to inform how to page the file.
 
 #### Call 2: Full Content Retrieval
 
-Only run additional queries for items marked `[TRUNCATED]` that you think are critical to understanding:
+Only run additional queries for items marked `[TRUNCATED]` that you think are important to understanding:
 - Task definitions or requirements
 - Error messages needing full context
 - Code blocks or file contents referenced in next steps
@@ -198,10 +201,10 @@ Only include importance 3+ in the Key Conversation Flow table. No less than 10% 
 Run this bash command:
 
 ```bash
-HANDOFF_FILE=$(${CLAUDE_PLUGIN_ROOT}/skills/handoff/scripts/create-handoff-file.sh "${CLAUDE_SESSION_ID}")
+echo $(${CLAUDE_PLUGIN_ROOT}/skills/handoff/scripts/get-handoff-file-name.sh "${CLAUDE_SESSION_ID}")
 ```
 
-This creates an empty file (e.g., `handoff--new-cool-feature.md`) and outputs its path. Write the completed handoff document to this file.
+This gives you a file name (e.g., `handoff--new-cool-feature.md`). Write the completed handoff document to this file.
 
 #### Write the handoff document
 
@@ -211,7 +214,3 @@ For each `<section>` in the template:
 1. Read the `<instructions>` to understand what content to include
 2. Fill in the `{placeholders}` in the `<template>` block
 3. Output the filled template text (without the XML tags)
-
-Write it to the `HANDOFF_FILE`
-
-

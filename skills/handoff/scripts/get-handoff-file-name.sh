@@ -22,7 +22,6 @@ fi
 create_file() {
   local name="$1"
   local filepath="handoff--${name}.md"
-  touch "$filepath"
   echo "$filepath"
   exit 0
 }
