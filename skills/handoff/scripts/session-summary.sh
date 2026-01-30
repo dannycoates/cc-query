@@ -3,6 +3,9 @@
 # Usage: ./session-summary.sh <session_id>
 #   or:  CLAUDE_SESSION_ID=xxx ./session-summary.sh
 
+# Default CLAUDE_PLUGIN_ROOT to project root (3 levels up from scripts/)
+CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+
 SESSION_ID="${1:-$CLAUDE_SESSION_ID}"
 
 if [[ -z "$SESSION_ID" ]]; then
