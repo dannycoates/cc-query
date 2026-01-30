@@ -125,6 +125,7 @@ commands = [
     "mkdir",                        # create directories
     "ln",                           # create links
     "install",                      # copy and set attributes
+    "chmod",                        # change file permissions
 
     # -------------------------------------------------------------------------
     # Archive & Compression
@@ -310,14 +311,6 @@ args.any = ["flags:r", "--recursive"]
 
 # --- rmdir: Allow (only removes empty directories) ---
 [[bash.allow.rmdir]]
-
-# --- chmod: Block making files executable ---
-[[bash.deny.chmod]]
-message = "{{.ArgsStr}} - making files executable requires review"
-args.any = ["re:\\+x", "re:[0-7][1357][0-7]", "re:[0-7][0-7][1357]"]
-
-# --- chmod: Allow other chmod operations ---
-[[bash.allow.chmod]]
 
 # --- chown/chgrp: Always deny (ownership changes are sensitive) ---
 [[bash.deny.chown]]

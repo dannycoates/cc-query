@@ -216,17 +216,9 @@ Importance Rating Guide:
 To retrieve full content for any row:
 
 ```bash
-# For messages (U, T, A) - ID is 8-char uuid prefix
-cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
-SELECT content FROM human_messages WHERE uuid::VARCHAR LIKE '{id}%';  -- U
-SELECT block->>'thinking' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '{id}%' AND block->>'type' = 'thinking';  -- T
-SELECT block->>'text' FROM assistant_messages, LATERAL UNNEST(CAST(message->'content' AS JSON[])) as t(block) WHERE uuid::VARCHAR LIKE '{id}%' AND block->>'type' = 'text';  -- A
-EOF
-
-# For tool calls (C) - ID is full tool_id
-cat << 'EOF' | ${CLAUDE_PLUGIN_ROOT}/bin/cc-query -s "${CLAUDE_SESSION_ID}"
-SELECT tu.tool_input, tr.result_content FROM tool_uses tu LEFT JOIN tool_results tr ON tu.tool_id = tr.tool_use_id WHERE tu.tool_id = '{tool_id}';
-EOF
+${CLAUDE_PLUGIN_ROOT}/skills/pickup/scripts/get-content.sh <id> [type] [session_id]
+# Tool calls (toolu_*): type not needed, session_id is arg 2
+# Messages: type required (U=human, T=thinking, A=assistant), session_id is arg 3
 ```
 </template>
 </section>

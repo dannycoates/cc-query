@@ -65,7 +65,7 @@ echo "SELECT count(*) FROM messages;" | cc-query .
 
 ## Skills
 
-The plugin includes two skills for session analysis:
+The plugin includes three skills for session analysis:
 
 ### `/reflect`
 
@@ -87,12 +87,22 @@ Create detailed handoff documents for work continuation. Produces:
 
 See [skills/handoff/SKILL.md](skills/handoff/SKILL.md) for output format.
 
+### `/pickup`
+
+Resume work from a handoff document. Reads a handoff file and:
+- Presents actionable options from Next Steps and incomplete Tasks
+- Retrieves full content for key messages using `get-content.sh`
+- Restores working context from Files of Interest
+
+See [skills/pickup/SKILL.md](skills/pickup/SKILL.md) for workflow.
+
 ### Example Questions
 
 - Across all projects what bash commands return the most errors?
 - Let's analyze the last session and identify how we might improve the CLAUDE.md file
 - Give me a summary of what we worked on this past week
 - Create a handoff document for this session
+- /pickup (resume from most recent handoff)
 
 ## License
 
