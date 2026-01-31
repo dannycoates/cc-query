@@ -12,6 +12,15 @@ if (sessionFlagIndex !== -1 && sessionFlagIndex + 1 < args.length) {
   sessionFilter = args[sessionFlagIndex + 1];
 }
 
+// Parse --data-dir or -d flag
+let dataDir = "";
+const dataDirFlagIndex = args.findIndex(
+  (a) => a === "--data-dir" || a === "-d",
+);
+if (dataDirFlagIndex !== -1 && dataDirFlagIndex + 1 < args.length) {
+  dataDir = args[dataDirFlagIndex + 1];
+}
+
 // Show help
 if (args.includes("--help") || args.includes("-h")) {
   console.log("Usage: cc-query [options] [project-path]");
@@ -27,6 +36,9 @@ if (args.includes("--help") || args.includes("-h")) {
   console.log("Options:");
   console.log(
     "  --session, -s <prefix>  Filter to sessions matching the ID prefix",
+  );
+  console.log(
+    "  --data-dir, -d <dir>    Use directory directly as JSONL data source",
   );
   console.log("  --help, -h              Show this help message");
   console.log("");
@@ -51,7 +63,10 @@ const filteredArgs = args.filter(
   (a, i) =>
     a !== "--session" &&
     a !== "-s" &&
-    (sessionFlagIndex === -1 || i !== sessionFlagIndex + 1),
+    a !== "--data-dir" &&
+    a !== "-d" &&
+    (sessionFlagIndex === -1 || i !== sessionFlagIndex + 1) &&
+    (dataDirFlagIndex === -1 || i !== dataDirFlagIndex + 1),
 );
 
 // If no project specified, use null for all projects
@@ -65,13 +80,15 @@ if (filteredArgs.length > 0) {
 }
 
 try {
-  await startRepl(claudeProjectsDir, { sessionFilter });
+  await startRepl(claudeProjectsDir, { sessionFilter, dataDir });
 } catch (err) {
   if (
     err instanceof Error &&
     /** @type {NodeJS.ErrnoException} */ (err).code === "ENOENT"
   ) {
-    if (projectPath) {
+    if (dataDir) {
+      console.error(`Error: No JSONL files found in ${dataDir}`);
+    } else if (projectPath) {
       console.error(`Error: No Claude Code data found for ${projectPath}`);
       console.error(`Expected: ${claudeProjectsDir}`);
     } else {

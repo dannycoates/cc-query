@@ -42,6 +42,7 @@ async function saveHistory(history) {
 /**
  * @typedef {object} ReplOptions
  * @property {string} [sessionFilter] - Session ID prefix filter
+ * @property {string} [dataDir] - Use directory directly as JSONL data source
  */
 
 /**
@@ -228,10 +229,12 @@ async function runPipedQueries(qs, input) {
  * @param {ReplOptions} [options]
  */
 export async function startRepl(claudeProjectsDir, options = {}) {
-  const { sessionFilter = "" } = options;
+  const { sessionFilter = "", dataDir = "" } = options;
 
   // Create query session (handles file discovery and view creation)
-  const qs = await QuerySession.create(claudeProjectsDir, sessionFilter);
+  const qs = await QuerySession.create(claudeProjectsDir, sessionFilter, {
+    dataDir,
+  });
   const { sessionCount, agentCount, projectCount } = qs.info;
 
   // Check if input is piped (non-TTY)

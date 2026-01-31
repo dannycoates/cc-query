@@ -149,11 +149,12 @@ export class QuerySession {
    * Create a QuerySession from a project path
    * @param {string | null} projectDir - Claude projects dir, or null for all
    * @param {string} [sessionFilter] - Optional session ID prefix filter
+   * @param {{ dataDir?: string }} [options] - Additional options
    * @returns {Promise<QuerySession>}
    */
-  static async create(projectDir, sessionFilter = "") {
+  static async create(projectDir, sessionFilter = "", options = {}) {
     const { sessionCount, agentCount, projectCount, filePattern } =
-      await getSessionFiles(projectDir, sessionFilter);
+      await getSessionFiles(projectDir, sessionFilter, options);
 
     if (sessionCount === 0) {
       const err = new Error("No sessions found");

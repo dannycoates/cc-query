@@ -62,9 +62,58 @@ function countSessionsAndAgents(files, sessionFilter = "") {
  * Get session info and file pattern for querying
  * @param {string | null} claudeProjectsDir - Path to ~/.claude/projects/{slug}, or null for all projects
  * @param {string} [sessionFilter] - Optional session ID prefix
+ * @param {{ dataDir?: string }} [options] - Additional options
  * @returns {Promise<{ sessionCount: number, agentCount: number, projectCount: number, filePattern: string | string[] }>}
  */
-export async function getSessionFiles(claudeProjectsDir, sessionFilter = "") {
+export async function getSessionFiles(
+  claudeProjectsDir,
+  sessionFilter = "",
+  options = {},
+) {
+  const { dataDir } = options;
+
+  // If dataDir is specified, use it directly as the JSONL source
+  if (dataDir) {
+    const entries = await readdir(dataDir, { recursive: true });
+    const { sessions, agents } = countSessionsAndAgents(entries, sessionFilter);
+
+    if (sessions === 0 && agents === 0) {
+      // Check for any JSONL files at all
+      const jsonlFiles = entries.filter((e) => e.endsWith(".jsonl"));
+      if (jsonlFiles.length === 0) {
+        return {
+          sessionCount: 0,
+          agentCount: 0,
+          projectCount: 0,
+          filePattern: "",
+        };
+      }
+      // Has JSONL files but they don't match normal session naming - still use them
+      return {
+        sessionCount: jsonlFiles.length,
+        agentCount: 0,
+        projectCount: 1,
+        filePattern: join(dataDir, "**/*.jsonl"),
+      };
+    }
+
+    let filePattern;
+    if (sessionFilter) {
+      filePattern = [join(dataDir, `${sessionFilter}*.jsonl`)];
+      if (agents > 0) {
+        filePattern.push(join(dataDir, `${sessionFilter}*/subagents/*.jsonl`));
+      }
+    } else {
+      filePattern = join(dataDir, "**/*.jsonl");
+    }
+
+    return {
+      sessionCount: sessions,
+      agentCount: agents,
+      projectCount: 1,
+      filePattern,
+    };
+  }
   // If no specific project, use all projects
   if (!claudeProjectsDir) {
     const base = getClaudeProjectsBase();

@@ -1,7 +1,9 @@
 ## Commands
 
 ```bash
-npm run typecheck    # Type-check all JS files with TypeScript (no emit)
+just typecheck       # Type-check all JS files with TypeScript (no emit)
+just test            # Run tests against fixtures
+just bump [type]     # Bump version (patch by default, or major|minor|patch)
 ```
 
 There is no build step - this is a JavaScript project with JSDoc type annotations checked by TypeScript.
