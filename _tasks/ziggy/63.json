@@ -1,0 +1,14 @@
+{
+  "id": "63",
+  "subject": "M7: Run full integration test suite",
+  "description": "Execute complete test suite to verify feature parity.\n\n**Commands:**\n```bash\n# Build\ncd zig && zig build\n\n# Unit tests\nzig build test\n\n# Integration tests\ncd .. && just zig-test\n# Or: CC_QUERY=./zig/zig-out/bin/ccq ./test/test.sh\n\n# Both implementations\njust test-all\n```\n\n**Manual verification:**\n```bash\n# Interactive smoke test\n./zig/zig-out/bin/ccq -d test/fixtures\ncc-query> SELECT count(*) FROM messages;\ncc-query> .schema\ncc-query> .quit\n```\n\n**Output comparison:**\n```bash\n# Compare piped output\necho \"SELECT count(*) FROM messages;\" | node bin/cc-query.js -d test/fixtures > /tmp/node.out\necho \"SELECT count(*) FROM messages;\" | ./zig/zig-out/bin/ccq -d test/fixtures > /tmp/zig.out\ndiff /tmp/node.out /tmp/zig.out\n```\n\n**Checklist:**\n- [ ] `zig build test` - all unit tests pass\n- [ ] `just zig-test` - all integration tests pass\n- [ ] `just test-all` - both Node and Zig pass\n- [ ] Piped output matches Node\n- [ ] Interactive mode works correctly\n- [ ] No memory leaks (run with GPA leak detection)\n\n**Acceptance criteria:**\n- All tests pass\n- Output matches Node.js\n- No regressions",
+  "activeForm": "Running integration tests",
+  "status": "pending",
+  "blocks": [
+    "64"
+  ],
+  "blockedBy": [
+    "60",
+    "61"
+  ]
+}

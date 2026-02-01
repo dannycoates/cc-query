@@ -1,0 +1,13 @@
+{
+  "id": "48",
+  "subject": "M4: Create formatter tests",
+  "description": "Unit tests for formatter.zig.\n\n**Test cases:**\n```zig\ntest \"formatTimestamp matches Node output\" {\n    const micros: i64 = 1736039614310000;  // 2025-01-05 01:13:34.310\n    const result = try formatTimestamp(testing.allocator, micros);\n    defer testing.allocator.free(result);\n    try testing.expectEqualStrings(\"2025-01-05 01:13:34.310\", result);\n}\n\ntest \"formatTimestamp handles epoch\" {\n    const result = try formatTimestamp(testing.allocator, 0);\n    defer testing.allocator.free(result);\n    try testing.expectEqualStrings(\"1970-01-01 00:00:00.000\", result);\n}\n\ntest \"formatTimestamp handles milliseconds\" {\n    const micros: i64 = 1000000;  // 1 second in micros\n    const result = try formatTimestamp(testing.allocator, micros);\n    defer testing.allocator.free(result);\n    try testing.expectEqualStrings(\"1970-01-01 00:00:01.000\", result);\n}\n```\n\n**Acceptance criteria:**\n- Timestamp format exact match\n- No memory leaks",
+  "activeForm": "Creating formatter tests",
+  "status": "pending",
+  "blocks": [
+    "49"
+  ],
+  "blockedBy": [
+    "47"
+  ]
+}

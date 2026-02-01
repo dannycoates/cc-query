@@ -1,0 +1,14 @@
+{
+  "id": "39",
+  "subject": "M2: Create paths.zig with path utilities",
+  "description": "Implement path resolution matching Node.js behavior exactly.\n\n**File:** `zig/src/paths.zig`\n\n**Functions:**\n1. `resolveProjectPath(allocator, path)` - Expand ~ to home, resolve relative paths\n2. `getProjectSlug(allocator, path)` - Generate slug: /path/to/project → -path-to-project  \n3. `resolveProjectDir(allocator, path)` - Combine resolution and slug, return claude projects dir\n\n**Key details:**\n- Use `std.fs.path` for path operations\n- Use `std.posix.getenv(\"HOME\")` for home directory\n- Check `CLAUDE_PROJECT_DIR` env var for relative path resolution\n- Slug replaces `/` and `.` with `-`\n\n**Reference:** src/utils.js lines 9-16 (resolution), 23-25 (slug)\n\n**Acceptance criteria:**\n- Tilde expansion: `~/foo` → `/home/user/foo`\n- Slug generation: `/home/user/my.project` → `-home-user-my-project`\n- Relative path resolution works",
+  "activeForm": "Creating paths.zig",
+  "status": "pending",
+  "blocks": [
+    "41",
+    "42"
+  ],
+  "blockedBy": [
+    "37"
+  ]
+}

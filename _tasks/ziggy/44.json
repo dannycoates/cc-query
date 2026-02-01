@@ -1,0 +1,13 @@
+{
+  "id": "44",
+  "subject": "M3: Create session_loader tests",
+  "description": "Unit tests for session_loader.zig.\n\n**Test cases:**\n```zig\ntest \"countSessionsAndAgents distinguishes file types\" {\n    const files = &[_][]const u8{\n        \"abc123.jsonl\",\n        \"abc123/subagents/agent-xyz.jsonl\",\n        \"def456.jsonl\",\n    };\n    const counts = countSessionsAndAgents(files, null);\n    try testing.expectEqual(@as(usize, 2), counts.sessions);\n    try testing.expectEqual(@as(usize, 1), counts.agents);\n}\n\ntest \"countSessionsAndAgents with filter\" {\n    const files = &[_][]const u8{\n        \"abc123.jsonl\",\n        \"def456.jsonl\",\n    };\n    const counts = countSessionsAndAgents(files, \"abc\");\n    try testing.expectEqual(@as(usize, 1), counts.sessions);\n}\n\ntest \"countSessionsAndAgents empty list\" {\n    const files = &[_][]const u8{};\n    const counts = countSessionsAndAgents(files, null);\n    try testing.expectEqual(@as(usize, 0), counts.sessions);\n}\n```\n\n**Acceptance criteria:**\n- All tests pass\n- Session/agent distinction correct\n- Filter matching works",
+  "activeForm": "Creating session_loader tests",
+  "status": "pending",
+  "blocks": [
+    "45"
+  ],
+  "blockedBy": [
+    "43"
+  ]
+}

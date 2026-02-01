@@ -38,7 +38,7 @@ test-e2e: build
     CC_QUERY="./ccq/target/release/ccq" ./test/test.sh
 
 # Full validation (JS + Rust unit + e2e)
-test-all: test test-rust test-e2e
+test-all: test test-rust test-e2e zig-test
 
 # Benchmark startup time
 bench:
@@ -121,3 +121,17 @@ goreleaser-check:
 # Dry-run release (no publish)
 release-dry:
     goreleaser release --snapshot --clean
+
+# === Zig targets ===
+
+# Build Zig version
+zig-build:
+    cd zig && zig build
+
+# Run Zig tests
+zig-test: zig-build
+    @test/test-zig.sh
+
+# Build Zig release version
+zig-release:
+    cd zig && zig build -Doptimize=ReleaseFast

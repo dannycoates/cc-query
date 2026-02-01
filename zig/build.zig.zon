@@ -1,0 +1,12 @@
+.{
+    .fingerprint = 0xdc02d5a5f962d425,
+    .name = .ccq,
+    .version = "0.1.0",
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
+    .dependencies = .{
+        .zuckdb = .{
+            .url = "git+https://github.com/karlseguin/zuckdb.zig",
+            .hash = "zuckdb-0.0.0-DpSXVNc4BgBkAOzXQcNkOwctDLGlKtnLnIUepn2I_S-g",
+        },
+    },
+}

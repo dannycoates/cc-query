@@ -1,0 +1,14 @@
+{
+  "id": "60",
+  "subject": "M7: Create test/test-zig.sh wrapper",
+  "description": "Create wrapper script to run shared tests against Zig binary.\n\n**File:** `test/test-zig.sh`\n\n**Content:**\n```bash\n#!/bin/bash\nSCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\nCC_QUERY=\"$SCRIPT_DIR/../zig/zig-out/bin/ccq\" exec \"$SCRIPT_DIR/test.sh\"\n```\n\n**Steps:**\n1. Create file with content above\n2. Make executable: `chmod +x test/test-zig.sh`\n\n**Acceptance criteria:**\n- Script is executable\n- Runs test.sh with Zig binary\n- Inherits all test cases",
+  "activeForm": "Creating test-zig.sh",
+  "status": "pending",
+  "blocks": [
+    "61",
+    "63"
+  ],
+  "blockedBy": [
+    "59"
+  ]
+}

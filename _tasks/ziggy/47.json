@@ -1,0 +1,14 @@
+{
+  "id": "47",
+  "subject": "M4: Create formatter.zig for output formatting",
+  "description": "Implement output formatting matching Node.js exactly.\n\n**File:** `zig/src/formatter.zig`\n\n**Functions:**\n\n1. **formatTimestamp(allocator, micros)** → \"YYYY-MM-DD HH:MM:SS.mmm\"\n   - Space separator, NO 'T', NO 'Z'\n   - Use `std.time.epoch.EpochSeconds`\n\n2. **formatTable(writer, result)** → Box-drawing table\n   - Characters: ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ │ ─\n   - Column width = max(header, data)\n   - Footer: `(N row)` or `(N rows)`\n\n3. **formatTsv(writer, result)** → Tab-separated\n   - Header row with column names\n   - Tab between columns, newline between rows\n\n**Zig 0.15.2 pattern:**\n```zig\npub fn formatTable(\n    writer: *std.Io.Writer,  // Concrete type\n    result: *const ResultSet,\n) !void {\n    // Caller responsible for flush\n}\n```\n\n**Reference:** src/query-session.js lines 47-113\n\n**Acceptance criteria:**\n- Timestamp: 1736039614310000 → \"2025-01-05 01:13:34.310\"\n- Table borders render correctly\n- TSV uses tabs, not spaces",
+  "activeForm": "Creating formatter.zig",
+  "status": "pending",
+  "blocks": [
+    "48",
+    "49"
+  ],
+  "blockedBy": [
+    "46"
+  ]
+}

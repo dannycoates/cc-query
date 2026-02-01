@@ -1,0 +1,14 @@
+{
+  "id": "52",
+  "subject": "M5: Implement REPL interactive mode",
+  "description": "Implement REPL behavior for interactive terminal use (TTY).\n\n**Function:** `runInteractiveMode(self, stdout, stderr, session_info)`\n\n**Behavior:**\n1. Print banner:\n   ```\n   Loaded {N} project(s), {N} session(s), {N} agent file(s)\n   ```\n\n2. Load history from ~/.cc_query_history\n\n3. Main loop:\n   - Print prompt: \"cc-query> \" (ready) or \"      -> \" (accumulating)\n   - Flush stdout before reading\n   - Read line using takeDelimiterExclusive + toss\n   - Add non-empty lines to history\n   - Process line (query accumulation or dot command)\n\n4. Save history on exit (last 100 entries)\n\n**Output format:** Table (not TSV) for interactive mode\n\n**Reference:** Plan lines 803-847\n\n**Acceptance criteria:**\n- Prompts display correctly\n- Multi-line queries accumulate\n- Table output formatted correctly\n- History saved on clean exit",
+  "activeForm": "Implementing interactive mode",
+  "status": "pending",
+  "blocks": [
+    "55"
+  ],
+  "blockedBy": [
+    "50",
+    "54"
+  ]
+}

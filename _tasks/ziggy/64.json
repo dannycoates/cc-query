@@ -1,0 +1,12 @@
+{
+  "id": "64",
+  "subject": "M7: COMPLETE - Document known limitations and ship",
+  "description": "Final verification and documentation of the Zig port.\n\n**Known limitations to document:**\n- No arrow key navigation in REPL (requires readline library)\n- No in-line editing in REPL\n- Basic history (save/load only, no search)\n\n**Final checklist from plan:**\n\n### Build & Unit Tests\n- [ ] `cd zig && zig build` compiles without errors\n- [ ] `cd zig && zig build test` passes all unit tests\n\n### CLI Parity\n- [ ] `ccq --help` matches `cc-query --help` exactly\n- [ ] `-s <prefix>` filters sessions correctly\n- [ ] `-d <dir>` uses custom data directory\n- [ ] Exit codes match (0 success, 1 error)\n\n### Query Output Parity\n- [ ] TSV format matches\n- [ ] Box-drawing table renders correctly\n- [ ] Multiple query separator `---` works\n- [ ] Value formatting: NULL, UUID, timestamp, bigint, JSON\n\n### REPL Parity\n- [ ] `.help` output matches\n- [ ] `.schema` lists all 11 views\n- [ ] `.schema <view>` shows specific view\n- [ ] `.quit` / `.q` / `.exit` all exit\n- [ ] Multi-line input accumulates until `;`\n- [ ] History persists to `~/.cc_query_history`\n\n### Integration Tests\n- [ ] `just zig-test` passes\n- [ ] `just test-all` passes\n\n**Ship criteria:**\n- All checklist items pass\n- README documents limitations\n- No memory leaks detected",
+  "activeForm": "Completing milestone",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": [
+    "62",
+    "63"
+  ]
+}

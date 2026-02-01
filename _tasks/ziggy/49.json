@@ -1,0 +1,15 @@
+{
+  "id": "49",
+  "subject": "M4: VERIFY - Views create and queries execute",
+  "description": "Verify database layer works end-to-end with test fixtures.\n\n**Verification in main.zig:**\n```zig\n// 1. Discover files\nconst info = try session_loader.getSessionFiles(allocator, null, null, \n    .{ .data_dir = \"../test/fixtures\" });\ndefer info.file_pattern.deinit(allocator);\n\n// 2. Init database\nvar db = try database.Database.init();\ndefer db.deinit();\n\n// 3. Create views\nconst file_pattern_sql = try info.file_pattern.format(allocator);\ndefer allocator.free(file_pattern_sql);\nconst views_sql = try views.createViewsSql(allocator, file_pattern_sql);\ndefer allocator.free(views_sql);\ntry db.exec(views_sql);\n\n// 4. Run query\nvar result = try db.query(allocator, \"SELECT count(*) FROM messages;\");\ndefer result.deinit(allocator);\n\n// 5. Format output\ntry formatter.formatTable(stdout, &result);\n```\n\n```bash\ncd zig && zig build run\n# Should print table with message count\n```\n\n**Checklist:**\n- [ ] All 11 views create without SQL errors\n- [ ] SELECT queries return results\n- [ ] Table formatting looks correct\n- [ ] No memory leaks\n\n**Compare with Node:**\n```bash\necho \"SELECT count(*) FROM messages;\" | node bin/cc-query.js -d test/fixtures\n```\n\n**Gate:** Do not proceed to M5 until this passes.",
+  "activeForm": "Verifying query execution",
+  "status": "pending",
+  "blocks": [
+    "50"
+  ],
+  "blockedBy": [
+    "45",
+    "47",
+    "48"
+  ]
+}

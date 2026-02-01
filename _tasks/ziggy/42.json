@@ -1,0 +1,17 @@
+{
+  "id": "42",
+  "subject": "M2: VERIFY - Foundation modules compile and test",
+  "description": "Verify Milestone 2 is complete: all foundation modules work.\n\n**Verification:**\n```bash\ncd zig\nzig build test   # Unit tests pass\n```\n\n**Checklist:**\n- [ ] types.zig compiles when imported from main.zig\n- [ ] paths.zig compiles and tests pass\n- [ ] views.zig compiles (SQL validity tested in M4)\n- [ ] No memory leaks in tests\n\n**Quick smoke test in main.zig:**\n```zig\nconst types = @import(\"types.zig\");\nconst paths = @import(\"paths.zig\");\nconst views = @import(\"views.zig\");\n// Should compile\n```\n\n**Gate:** Do not proceed to M3 until this passes.",
+  "activeForm": "Verifying foundation modules",
+  "status": "pending",
+  "blocks": [
+    "43",
+    "46"
+  ],
+  "blockedBy": [
+    "38",
+    "39",
+    "40",
+    "41"
+  ]
+}

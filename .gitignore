@@ -13,3 +13,8 @@ duckdb-static/include/
 
 # Cross-compilation DuckDB libs
 duckdb-libs/
+
+# Zig build artifacts
+zig/zig-out/
+zig/zig-cache/
+zig/.zig-cache/

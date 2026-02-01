@@ -1,0 +1,16 @@
+{
+  "id": "50",
+  "subject": "M5: Create repl.zig core struct and state machine",
+  "description": "Create REPL struct with state machine for multi-line input.\n\n**File:** `zig/src/repl.zig`\n\n**Struct:**\n```zig\npub const Repl = struct {\n    state: types.ReplState,\n    buffer: std.ArrayListUnmanaged(u8),\n    db: *database.Database,\n    allocator: Allocator,\n    history: std.ArrayListUnmanaged([]const u8),\n    history_path: []const u8,\n\n    pub fn init(allocator: Allocator, db: *database.Database) !Repl\n    pub fn run(self: *Repl, stdout: anytype, stderr: anytype, session_info: types.SessionInfo) !void\n    pub fn deinit(self: *Repl) void\n};\n```\n\n**State transitions:**\n- `ready` + input without `;` → `accumulating`\n- `accumulating` + input with `;` → execute → `ready`\n- `ready` + `.command` → handle → `ready`\n\n**TTY detection:**\n```zig\nconst stdin_file = std.fs.File.stdin();\nconst is_tty = stdin_file.isTty();\n```\n\nDispatch to `runPipedMode()` or `runInteractiveMode()` based on TTY.\n\n**Acceptance criteria:**\n- Struct initializes correctly\n- State machine transitions work\n- Memory properly managed on deinit",
+  "activeForm": "Creating REPL core",
+  "status": "pending",
+  "blocks": [
+    "51",
+    "52",
+    "53",
+    "54"
+  ],
+  "blockedBy": [
+    "49"
+  ]
+}

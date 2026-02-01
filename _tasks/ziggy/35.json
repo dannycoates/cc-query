@@ -1,0 +1,13 @@
+{
+  "id": "35",
+  "subject": "M1: Create Zig build system with DuckDB",
+  "description": "Set up Zig 0.15.2 project that compiles and links to DuckDB via zuckdb.zig.\n\n**Files to create:**\n1. `zig/build.zig.zon` - Package manifest with zuckdb dependency\n2. `zig/build.zig` - Build configuration\n\n**Steps:**\n1. Create zig/ directory\n2. Run `zig fetch --save git+https://github.com/karlseguin/zuckdb.zig` to get hash\n3. Create build.zig.zon with correct hash (use `.name = \"ccq\"` simple string)\n4. Create build.zig with exe, run, and test steps\n\n**Reference:** Plan lines 396-456 for templates\n\n**Acceptance criteria:**\n- `cd zig && zig build` succeeds\n- DuckDB native library downloads and links",
+  "activeForm": "Creating build system",
+  "status": "pending",
+  "blocks": [
+    "36"
+  ],
+  "blockedBy": [
+    "34"
+  ]
+}

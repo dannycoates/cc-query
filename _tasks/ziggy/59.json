@@ -1,0 +1,14 @@
+{
+  "id": "59",
+  "subject": "M6: VERIFY - CLI arguments and help match Node.js",
+  "description": "Verify CLI behavior matches Node.js exactly.\n\n**Help comparison:**\n```bash\ndiff <(node bin/cc-query.js --help) <(./zig/zig-out/bin/ccq --help)\n# Should show no differences\n```\n\n**Argument tests:**\n```bash\n# Help flags\n./zig-out/bin/ccq --help\n./zig-out/bin/ccq -h\n\n# Session filter\n./zig-out/bin/ccq -s abc123 -d ../test/fixtures\n./zig-out/bin/ccq --session abc123 -d ../test/fixtures\n\n# Data directory\n./zig-out/bin/ccq -d ../test/fixtures\n./zig-out/bin/ccq --data-dir ../test/fixtures\n\n# Project path (if ~/.claude/projects exists)\n./zig-out/bin/ccq .\n\n# Error cases\n./zig-out/bin/ccq -s  # Should error: missing argument\n./zig-out/bin/ccq --unknown  # Should error: unknown option\n./zig-out/bin/ccq -d /nonexistent  # Should error: no files\n```\n\n**Checklist:**\n- [ ] `--help` output identical to Node\n- [ ] All flag variants work\n- [ ] Error messages match Node\n- [ ] Exit codes correct (0 success, 1 error)\n\n**Gate:** Do not proceed to M7 until this passes.",
+  "activeForm": "Verifying CLI",
+  "status": "pending",
+  "blocks": [
+    "60",
+    "62"
+  ],
+  "blockedBy": [
+    "58"
+  ]
+}

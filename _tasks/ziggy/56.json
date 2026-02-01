@@ -1,0 +1,13 @@
+{
+  "id": "56",
+  "subject": "M6: Implement full CLI argument parsing in main.zig",
+  "description": "Implement complete CLI argument parsing matching Node.js.\n\n**File:** `zig/src/main.zig` (expand existing)\n\n**CLI interface:**\n```\nccq [options] [project-path]\n\nOptions:\n  -s, --session <prefix>  Filter to sessions matching ID prefix\n  -d, --data-dir <dir>    Use directory directly as JSONL source\n  -h, --help              Show help\n```\n\n**Implementation:**\n```zig\nfn parseArgs(args: [][:0]const u8) !types.Config {\n    var config = types.Config{};\n    var i: usize = 1;  // Skip program name\n    while (i < args.len) : (i += 1) {\n        const arg = args[i];\n        if (std.mem.eql(u8, arg, \"-h\") or std.mem.eql(u8, arg, \"--help\")) {\n            config.help = true;\n        } else if (std.mem.eql(u8, arg, \"-s\") or std.mem.eql(u8, arg, \"--session\")) {\n            i += 1;\n            if (i >= args.len) return error.MissingArgument;\n            config.session_filter = args[i];\n        } else if (std.mem.eql(u8, arg, \"-d\") or std.mem.eql(u8, arg, \"--data-dir\")) {\n            i += 1;\n            if (i >= args.len) return error.MissingArgument;\n            config.data_dir = args[i];\n        } else if (!std.mem.startsWith(u8, arg, \"-\")) {\n            config.project_path = arg;\n        } else {\n            return error.UnknownOption;\n        }\n    }\n    return config;\n}\n```\n\n**Help text:** Use \"cc-query\" (not \"ccq\") in help text for test parity.\n\n**Reference:** bin/cc-query.js lines 6-58\n\n**Acceptance criteria:**\n- All flag variants work (-h, --help, -s, --session, -d, --data-dir)\n- Project path positional argument works\n- Unknown flags error\n- Missing argument values error",
+  "activeForm": "Implementing CLI parsing",
+  "status": "pending",
+  "blocks": [
+    "58"
+  ],
+  "blockedBy": [
+    "55"
+  ]
+}
