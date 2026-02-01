@@ -1,0 +1,13 @@
+{
+  "id": "61",
+  "subject": "M7: Update justfile with Zig commands",
+  "description": "Add Zig build and test commands to justfile.\n\n**Commands to add:**\n```makefile\nzig-build:\n    cd zig && zig build\n\nzig-test: zig-build\n    test/test-zig.sh\n\nzig-release:\n    cd zig && zig build -Doptimize=ReleaseFast\n\ntest-all: test zig-test\n```\n\n**Acceptance criteria:**\n- `just zig-build` compiles Zig binary\n- `just zig-test` runs tests against Zig\n- `just zig-release` builds optimized binary\n- `just test-all` runs both Node and Zig tests",
+  "activeForm": "Updating justfile",
+  "status": "pending",
+  "blocks": [
+    "63"
+  ],
+  "blockedBy": [
+    "60"
+  ]
+}

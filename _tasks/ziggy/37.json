@@ -1,0 +1,14 @@
+{
+  "id": "37",
+  "subject": "M1: VERIFY - Build system works",
+  "description": "Verify Milestone 1 is complete: Zig project compiles and DuckDB works.\n\n**Verification commands:**\n```bash\ncd zig\nzig build           # Should compile\n./zig-out/bin/ccq   # Should run and print DuckDB success\n```\n\n**Checklist:**\n- [ ] `zig build` exits with code 0\n- [ ] Binary exists at `zig/zig-out/bin/ccq`\n- [ ] Running binary shows DuckDB connection success\n- [ ] No memory leaks reported\n\n**If failures:**\n- Check zuckdb hash is correct in build.zig.zon\n- Verify libc is linked in build.zig\n- Check I/O buffer setup matches Zig 0.15.2 pattern\n\n**Gate:** Do not proceed to M2 until this passes.",
+  "activeForm": "Verifying build system",
+  "status": "pending",
+  "blocks": [
+    "38",
+    "39"
+  ],
+  "blockedBy": [
+    "36"
+  ]
+}

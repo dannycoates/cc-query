@@ -1,0 +1,11 @@
+{
+  "id": "34",
+  "subject": "M1: Prepare repository for Zig development",
+  "description": "Update existing files to support parallel Node.js and Zig implementations.\n\n**Changes:**\n1. Modify `test/test.sh` line 10:\n   ```bash\n   CC_QUERY=\"${CC_QUERY:-$SCRIPT_DIR/../bin/cc-query.js}\"\n   ```\n\n2. Add to `.gitignore`:\n   ```\n   zig/zig-out/\n   zig/zig-cache/\n   zig/.zig-cache/\n   ```\n\n**Acceptance criteria:**\n- test.sh respects CC_QUERY env var\n- Zig build artifacts ignored by git",
+  "activeForm": "Preparing repository",
+  "status": "pending",
+  "blocks": [
+    "35"
+  ],
+  "blockedBy": []
+}

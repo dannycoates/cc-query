@@ -1,0 +1,13 @@
+{
+  "id": "57",
+  "subject": "M6: Implement error messages matching Node.js",
+  "description": "Implement error messages that match Node.js exactly for test parity.\n\n**Error messages (must match exactly):**\n- `\"Error: No JSONL files found in {path}\"` (for --data-dir with no files)\n- `\"Error: No Claude Code data found for {path}\"` (for project path)\n- `\"Error: No Claude Code sessions found\"` (for all projects scan)\n\n**Implementation pattern:**\n```zig\npub fn main() !void {\n    run() catch |err| {\n        // Zig 0.15.2: Use std.debug.print for stderr\n        switch (err) {\n            error.NoJsonlFiles => std.debug.print(\"Error: No JSONL files found in {s}\\\\n\", .{path}),\n            error.NoSessions => std.debug.print(\"Error: No Claude Code sessions found\\\\n\", .{}),\n            // etc.\n        }\n        std.process.exit(1);\n    };\n}\n```\n\n**Exit codes:**\n- 0 for success\n- 1 for errors\n\n**Reference:** bin/cc-query.js lines 84-96\n\n**Acceptance criteria:**\n- Error messages match Node exactly (case, punctuation, spacing)\n- Exit code 1 on error\n- Error output goes to stderr",
+  "activeForm": "Implementing error messages",
+  "status": "pending",
+  "blocks": [
+    "58"
+  ],
+  "blockedBy": [
+    "55"
+  ]
+}
