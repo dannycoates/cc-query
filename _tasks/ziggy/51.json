@@ -1,0 +1,13 @@
+{
+  "id": "51",
+  "subject": "M5: Implement REPL piped mode",
+  "description": "Implement REPL behavior for piped/redirected input (non-TTY).\n\n**Function:** `runPipedMode(self, stdout, stderr)`\n\n**Behavior:**\n1. Read all input using Zig 0.15.2 pattern:\n   ```zig\n   const line = stdin.takeDelimiterExclusive('\\\\n') catch |err| switch (err) {\n       error.EndOfStream => break,\n       else => return err,\n   };\n   try stdin.toss(1);  // Consume newline\n   ```\n\n2. Split by `;` keeping semicolon with statement\n3. Execute each statement\n4. Output TSV format (not table)\n5. Print `---` separator between multiple queries\n6. Handle dot commands (lines starting with `.`)\n\n**Reference:** Plan lines 773-799\n\n**Acceptance criteria:**\n- `echo \"SELECT 1;\" | ccq -d fixtures` produces TSV\n- Multiple queries separated by `---`\n- Dot commands work in piped mode",
+  "activeForm": "Implementing piped mode",
+  "status": "pending",
+  "blocks": [
+    "55"
+  ],
+  "blockedBy": [
+    "50"
+  ]
+}

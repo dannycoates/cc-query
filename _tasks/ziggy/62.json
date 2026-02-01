@@ -1,0 +1,13 @@
+{
+  "id": "62",
+  "subject": "M7: Create zig/README.md",
+  "description": "Create README documenting Zig implementation.\n\n**File:** `zig/README.md`\n\n**Sections:**\n1. **Overview** - Zig port of cc-query\n2. **Requirements** - Zig 0.15.2\n3. **Building**\n   ```bash\n   zig build\n   zig build -Doptimize=ReleaseFast\n   ```\n4. **Running**\n   ```bash\n   ./zig-out/bin/ccq --help\n   ./zig-out/bin/ccq -d /path/to/jsonl\n   ```\n5. **Testing**\n   ```bash\n   zig build test\n   ../test/test-zig.sh\n   ```\n6. **Known Limitations**\n   - No arrow key navigation (requires readline)\n   - No in-line editing\n   - Basic history (save/load only)\n\n**Acceptance criteria:**\n- README accurate and complete\n- Build commands work as documented",
+  "activeForm": "Creating README",
+  "status": "pending",
+  "blocks": [
+    "64"
+  ],
+  "blockedBy": [
+    "59"
+  ]
+}

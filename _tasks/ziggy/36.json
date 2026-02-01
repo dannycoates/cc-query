@@ -1,0 +1,13 @@
+{
+  "id": "36",
+  "subject": "M1: Create minimal main.zig proving DuckDB works",
+  "description": "Create minimal main.zig that verifies DuckDB integration.\n\n**File:** `zig/src/main.zig`\n\n**Functionality:**\n1. Set up Zig 0.15.2 buffered I/O (`.interface` pattern)\n2. Open in-memory DuckDB via zuckdb\n3. Execute `SELECT 1` to verify connection\n4. Print result and exit\n\n**Code pattern:**\n```zig\nconst zuckdb = @import(\"zuckdb\");\n\npub fn main() !void {\n    var gpa = std.heap.GeneralPurposeAllocator(.{}){};\n    defer _ = gpa.deinit();\n\n    // Zig 0.15.2 I/O\n    const stdout_file = std.fs.File.stdout();\n    var stdout_buf: [4096]u8 = undefined;\n    var stdout_writer = stdout_file.writer(&stdout_buf);\n    const stdout = &stdout_writer.interface;\n    defer stdout.flush() catch {};\n\n    // DuckDB test\n    var db = try zuckdb.DB.init(null, .{});\n    defer db.deinit();\n    var conn = try db.conn();\n    defer conn.deinit();\n\n    try stdout.print(\"DuckDB connection successful\\\\n\", .{});\n}\n```\n\n**Verification:**\n```bash\ncd zig && zig build run\n# Should print \"DuckDB connection successful\"\n```\n\n**Acceptance criteria:**\n- Binary compiles and runs\n- DuckDB opens without error\n- No memory leaks (GPA reports clean)",
+  "activeForm": "Creating minimal main.zig",
+  "status": "pending",
+  "blocks": [
+    "37"
+  ],
+  "blockedBy": [
+    "35"
+  ]
+}

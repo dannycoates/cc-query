@@ -1,0 +1,13 @@
+{
+  "id": "40",
+  "subject": "M2: Create views.zig with SQL view definitions",
+  "description": "Port all 11 SQL view definitions from Node.js.\n\n**File:** `zig/src/views.zig`\n\n**Function:**\n```zig\npub fn createViewsSql(allocator: Allocator, file_pattern: []const u8) ![]const u8\n```\n\n**Views to port (from src/query-session.js lines 243-498):**\n1. `messages` - Base view with 40+ columns + derived fields\n2. `user_messages` - Filtered to type = 'user'\n3. `assistant_messages` - Filtered to type = 'assistant'\n4. `system_messages` - Filtered to type = 'system'\n5. `human_messages` - User text content\n6. `raw_messages` - Full JSON via read_ndjson_objects()\n7. `tool_uses` - LATERAL UNNEST of tool_use blocks\n8. `tool_results` - LATERAL UNNEST with duration\n9. `token_usage` - Extracted token counts\n10. `bash_commands` - Bash tool uses\n11. `file_operations` - Read/Write/Edit/Glob/Grep\n\n**Helper function:**\n```zig\nfn escapePathForSql(allocator, path) ![]const u8\n// Replace ' with '' for SQL escaping\n```\n\n**Critical derived fields:**\n```sql\nfile = regexp_extract(filename, '[^/]+$')\nisAgent = starts_with(file, 'agent-')\nagentId = CASE WHEN isAgent THEN regexp_extract(file, 'agent-([^.]+)', 1) ELSE NULL END\nproject = regexp_extract(filename, '/projects/([^/]+)/', 1)\n```\n\n**Acceptance criteria:**\n- All 11 views defined\n- SQL syntax valid for DuckDB\n- Path escaping prevents SQL injection",
+  "activeForm": "Creating views.zig",
+  "status": "pending",
+  "blocks": [
+    "42"
+  ],
+  "blockedBy": [
+    "38"
+  ]
+}

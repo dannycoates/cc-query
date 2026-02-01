@@ -1,0 +1,13 @@
+{
+  "id": "41",
+  "subject": "M2: Create paths_test.zig unit tests",
+  "description": "Unit tests for paths.zig module.\n\n**File:** `zig/src/paths.zig` (inline tests) or `zig/tests/paths_test.zig`\n\n**Test cases:**\n```zig\ntest \"resolveProjectPath expands tilde\" {\n    const result = try resolveProjectPath(testing.allocator, \"~/code/foo\");\n    defer testing.allocator.free(result);\n    try testing.expect(!std.mem.startsWith(u8, result, \"~\"));\n}\n\ntest \"getProjectSlug replaces slashes and dots\" {\n    const result = try getProjectSlug(testing.allocator, \"/home/user/my.project\");\n    defer testing.allocator.free(result);\n    try testing.expectEqualStrings(\"-home-user-my-project\", result);\n}\n\ntest \"getProjectSlug handles root path\" {\n    const result = try getProjectSlug(testing.allocator, \"/\");\n    defer testing.allocator.free(result);\n    try testing.expectEqualStrings(\"-\", result);\n}\n```\n\n**Run with:** `cd zig && zig build test`\n\n**Acceptance criteria:**\n- All tests pass\n- No memory leaks detected",
+  "activeForm": "Creating paths tests",
+  "status": "pending",
+  "blocks": [
+    "42"
+  ],
+  "blockedBy": [
+    "39"
+  ]
+}

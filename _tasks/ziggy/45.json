@@ -1,0 +1,14 @@
+{
+  "id": "45",
+  "subject": "M3: VERIFY - File discovery works with test fixtures",
+  "description": "Verify session_loader can find files in test fixtures.\n\n**Verification:**\nAdd temporary test in main.zig:\n```zig\nconst session_loader = @import(\"session_loader.zig\");\n\n// Test with fixtures directory\nconst info = try session_loader.getSessionFiles(\n    allocator, \n    null,  // no project filter\n    null,  // no session filter\n    .{ .data_dir = \"../test/fixtures\" }\n);\ndefer info.file_pattern.deinit(allocator);\n\nstd.debug.print(\"Found {d} sessions, {d} agents\\\\n\", .{\n    info.session_count, info.agent_count\n});\n```\n\n```bash\ncd zig && zig build run\n# Should print session/agent counts matching Node.js\n```\n\n**Compare with Node:**\n```bash\nnode -e \"require('./src/session-loader.js').getSessionFiles(null, null, {dataDir: './test/fixtures'}).then(console.log)\"\n```\n\n**Checklist:**\n- [ ] Unit tests pass\n- [ ] Counts match Node.js output\n- [ ] FilePattern.format() produces valid SQL\n\n**Gate:** Do not proceed to M4 until this passes.",
+  "activeForm": "Verifying file discovery",
+  "status": "pending",
+  "blocks": [
+    "49"
+  ],
+  "blockedBy": [
+    "43",
+    "44"
+  ]
+}

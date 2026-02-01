@@ -1,0 +1,17 @@
+{
+  "id": "55",
+  "subject": "M5: VERIFY - REPL works in both modes",
+  "description": "Verify REPL works correctly in piped and interactive modes.\n\n**Piped mode test:**\n```bash\ncd zig\necho \"SELECT count(*) FROM messages;\" | ./zig-out/bin/ccq -d ../test/fixtures\n# Should output TSV (header + data row)\n\necho \"SELECT 1; SELECT 2;\" | ./zig-out/bin/ccq -d ../test/fixtures\n# Should have --- separator between results\n```\n\n**Interactive mode test:**\n```bash\n./zig-out/bin/ccq -d ../test/fixtures\n# Should show banner with counts\ncc-query> SELECT count(*) FROM messages;\n# Should show table output\ncc-query> .help\n# Should show help text\ncc-query> .schema\n# Should list all views\ncc-query> .quit\n# Should exit\n```\n\n**Multi-line test:**\n```bash\n./zig-out/bin/ccq -d ../test/fixtures\ncc-query> SELECT\n      -> count(*)\n      -> FROM messages;\n# Should execute after semicolon\n```\n\n**History test:**\n```bash\n./zig-out/bin/ccq -d ../test/fixtures\ncc-query> SELECT 1;\ncc-query> .quit\ncat ~/.cc_query_history\n# Should contain \"SELECT 1;\"\n```\n\n**Checklist:**\n- [ ] Piped mode outputs TSV\n- [ ] Interactive mode outputs tables\n- [ ] Multi-line accumulation works\n- [ ] All dot commands work\n- [ ] History persists\n\n**Gate:** Do not proceed to M6 until this passes.",
+  "activeForm": "Verifying REPL",
+  "status": "pending",
+  "blocks": [
+    "56",
+    "57"
+  ],
+  "blockedBy": [
+    "51",
+    "52",
+    "53",
+    "54"
+  ]
+}

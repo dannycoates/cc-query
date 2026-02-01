@@ -1,0 +1,14 @@
+{
+  "id": "54",
+  "subject": "M5: Implement history file management",
+  "description": "Implement history loading, saving, and path resolution.\n\n**File location:** `~/.cc_query_history`\n\n**Functions:**\n```zig\nfn getHistoryPath(allocator: Allocator) ![]const u8 {\n    const home = std.posix.getenv(\"HOME\") orelse return error.NoHomeDir;\n    return std.fmt.allocPrint(allocator, \"{s}/.cc_query_history\", .{home});\n}\n\nfn loadHistory(self: *Repl) !void\nfn saveHistory(self: *Repl) !void\n```\n\n**Zig 0.15.2 file I/O:**\n- Use `file.reader(&buf)` + `.interface`\n- Use `takeDelimiterExclusive` + `toss` for line reading\n- Use `file.writer(&buf)` + `.interface` for writing\n- Always flush writer before close\n\n**Save behavior:** Keep last 100 entries only\n\n**Reference:** Plan lines 850-891\n\n**Acceptance criteria:**\n- History loads on startup (if file exists)\n- History saves on exit\n- Graceful handling if file doesn't exist\n- Max 100 entries saved",
+  "activeForm": "Implementing history",
+  "status": "pending",
+  "blocks": [
+    "52",
+    "55"
+  ],
+  "blockedBy": [
+    "50"
+  ]
+}

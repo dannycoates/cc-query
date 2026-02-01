@@ -1,0 +1,14 @@
+{
+  "id": "38",
+  "subject": "M2: Create types.zig with shared types",
+  "description": "Create the shared types module used across all other modules.\n\n**File:** `zig/src/types.zig`\n\n**Types to define:**\n1. `Config` - CLI configuration struct\n2. `FilePattern` - Union for single/multiple file patterns with format() and deinit()\n3. `SessionInfo` - Discovery results (counts + file_pattern)\n4. `Error` - Custom error set\n5. `ReplState` - State machine enum (ready, accumulating)\n\n**Key Zig 0.15.2 patterns:**\n- Use `ArrayListUnmanaged` with `.{}` initialization in FilePattern.format()\n- Pass allocator to all mutating methods\n\n**Reference:** Plan lines 100-173 for complete type definitions\n\n**Acceptance criteria:**\n- All types compile when imported\n- FilePattern.format() produces correct SQL syntax\n- FilePattern.deinit() properly frees memory",
+  "activeForm": "Creating types.zig",
+  "status": "pending",
+  "blocks": [
+    "40",
+    "42"
+  ],
+  "blockedBy": [
+    "37"
+  ]
+}

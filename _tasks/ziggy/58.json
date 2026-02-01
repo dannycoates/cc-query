@@ -1,0 +1,14 @@
+{
+  "id": "58",
+  "subject": "M6: Wire up complete main.zig orchestration",
+  "description": "Complete main.zig to orchestrate all modules.\n\n**Flow:**\n1. Parse CLI args → Config\n2. If help: print help and exit\n3. Resolve project path (if provided) using paths.zig\n4. Discover session files using session_loader.zig\n5. Initialize database\n6. Create views using views.zig\n7. Execute views on database\n8. Initialize and run REPL\n\n**Complete structure:**\n```zig\npub fn main() !void {\n    var gpa = std.heap.GeneralPurposeAllocator(.{}){};\n    defer _ = gpa.deinit();\n    const allocator = gpa.allocator();\n\n    // I/O setup (Zig 0.15.2)\n    const stdout_file = std.fs.File.stdout();\n    var stdout_buf: [4096]u8 = undefined;\n    var stdout_writer = stdout_file.writer(&stdout_buf);\n    const stdout = &stdout_writer.interface;\n    defer stdout.flush() catch {};\n\n    run(allocator, stdout) catch |err| {\n        std.debug.print(\"Error: {s}\\\\n\", .{@errorName(err)});\n        std.process.exit(1);\n    };\n}\n\nfn run(allocator: Allocator, stdout: anytype) !void {\n    const args = try std.process.argsAlloc(allocator);\n    defer std.process.argsFree(allocator, args);\n\n    const config = try parseArgs(args);\n\n    if (config.help) {\n        try printHelp(stdout);\n        return;\n    }\n\n    // ... rest of orchestration\n}\n```\n\n**Acceptance criteria:**\n- All modules integrated\n- Clean startup and shutdown\n- No memory leaks",
+  "activeForm": "Wiring up main.zig",
+  "status": "pending",
+  "blocks": [
+    "59"
+  ],
+  "blockedBy": [
+    "56",
+    "57"
+  ]
+}

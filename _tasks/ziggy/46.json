@@ -1,0 +1,13 @@
+{
+  "id": "46",
+  "subject": "M4: Create database.zig DuckDB wrapper",
+  "description": "Create DuckDB wrapper with query execution and result handling.\n\n**File:** `zig/src/database.zig`\n\n**Structs:**\n```zig\npub const Database = struct {\n    db: zuckdb.DB,\n    conn: zuckdb.Conn,\n\n    pub fn init() !Database\n    pub fn exec(self: *Database, sql: []const u8) !void\n    pub fn query(self: *Database, allocator: Allocator, sql: []const u8) !ResultSet\n    pub fn deinit(self: *Database) void\n};\n\npub const ResultSet = struct {\n    columns: [][]const u8,\n    rows: [][][]const u8,\n    \n    pub fn deinit(self: *ResultSet, allocator: Allocator) void\n};\n```\n\n**Column type handling:**\n- varchar → dupe string immediately (CRITICAL: invalid after next())\n- bigint/integer → format as decimal\n- timestamp → format as \"YYYY-MM-DD HH:MM:SS.mmm\"\n- uuid → dupe UUID buffer\n- boolean → \"true\"/\"false\"/\"NULL\"\n- double → format as decimal\n- unknown → \"?\"\n\n**Error handling:**\n```zig\nfn printError(conn: *zuckdb.Conn) void {\n    if (conn.err) |msg| {\n        std.debug.print(\"Error: {s}\\\\n\", .{std.mem.span(msg)});\n    }\n}\n```\n\n**Reference:** Plan lines 604-666\n\n**Acceptance criteria:**\n- Database opens in-memory\n- Query results correctly typed\n- All strings copied before next()\n- Proper cleanup on deinit",
+  "activeForm": "Creating database.zig",
+  "status": "pending",
+  "blocks": [
+    "47"
+  ],
+  "blockedBy": [
+    "42"
+  ]
+}

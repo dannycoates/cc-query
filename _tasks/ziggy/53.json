@@ -1,0 +1,13 @@
+{
+  "id": "53",
+  "subject": "M5: Implement dot commands",
+  "description": "Implement all dot commands matching Node.js exactly.\n\n**Commands:**\n- `.help`, `.h` → Print help text\n- `.schema`, `.s` → Show all view schemas  \n- `.schema <view>`, `.s <view>` → Show specific view\n- `.quit`, `.exit`, `.q` → Exit REPL\n\n**Help text must match Node exactly.**\nReference: src/repl.js lines 52-108\n\n**Schema implementation:**\n- Query `DESCRIBE <view>` for each view\n- Format as table showing column names and types\n\n**Acceptance criteria:**\n- All dot command variants recognized\n- `.help` output matches Node\n- `.schema` lists all 11 views\n- Exit commands work cleanly",
+  "activeForm": "Implementing dot commands",
+  "status": "pending",
+  "blocks": [
+    "55"
+  ],
+  "blockedBy": [
+    "50"
+  ]
+}

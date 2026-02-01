@@ -1,0 +1,14 @@
+{
+  "id": "43",
+  "subject": "M3: Create session_loader.zig for file discovery",
+  "description": "Implement file discovery with identical counting to Node.js.\n\n**File:** `zig/src/session_loader.zig`\n\n**Functions:**\n1. `getClaudeProjectsBase(allocator)` - Returns ~/.claude/projects\n2. `getAllProjectDirs(allocator)` - List all project directories\n3. `countSessionsAndAgents(files, session_filter)` - Count from file list\n4. `getSessionFiles(allocator, claude_projects_dir, session_filter, options)` - Main discovery function\n\n**Key details:**\n- Session file: `{sessionId}.jsonl` (no `agent-` prefix)\n- Agent file: `{sessionId}/subagents/agent-{agentId}.jsonl`\n- Return FilePattern for DuckDB read_ndjson()\n\n**Critical Zig 0.15.2 patterns:**\n```zig\n// MUST use .iterate = true on Linux\nvar dir = try std.fs.openDirAbsolute(path, .{ .iterate = true });\n\n// MUST copy entry.path - buffer reused on next()\nconst full_path = try std.fs.path.join(allocator, &.{ base_path, entry.path });\n```\n\n**Reference:** src/session-loader.js lines 29-59 (counting), 68-193 (discovery)\n\n**Acceptance criteria:**\n- Sessions vs agents correctly distinguished\n- Session filter (prefix matching) works\n- Returns valid FilePattern for DuckDB",
+  "activeForm": "Creating session_loader.zig",
+  "status": "pending",
+  "blocks": [
+    "44",
+    "45"
+  ],
+  "blockedBy": [
+    "42"
+  ]
+}
