@@ -1,0 +1,130 @@
+# Tasker agent - read-only exploration, task creation only
+# No write/edit permissions - task management only
+
+version = "2.0"
+
+[aliases]
+project = "path:$PROJECT_ROOT/**"
+
+# Bash: read-only commands for exploration
+[bash]
+default = "deny"
+
+[bash.allow]
+mode = "replace"
+commands = [
+    # Project tools
+    "path:$HOME/**/cc-query",
+    "just",
+
+    # File & Directory Navigation
+    "ls", "dir", "vdir", "pwd", "tree", "file", "stat",
+    "basename", "dirname", "realpath", "readlink",
+
+    # File Viewing & Reading
+    "cat", "tac", "head", "tail", "less", "more", "nl",
+    "od", "hexdump", "xxd",
+
+    # Text Processing & Transformation (read-only use)
+    "grep", "egrep", "fgrep",
+    "sed", "awk", "gawk",
+    "cut", "paste", "join",
+    "sort", "uniq", "shuf",
+    "tr", "rev",
+    "expand", "unexpand", "fold", "fmt", "column", "pr",
+    "wc", "comm", "diff", "cmp", "colordiff", "delta",
+    "iconv", "strings",
+
+    # Searching & Finding
+    "find", "fd",
+    "locate", "mlocate", "plocate",
+    "which", "whereis", "type",
+    "xargs",
+    "rg", "ripgrep", "ag", "fzf",
+
+    # Printing & Output
+    "echo", "printf", "yes", "seq",
+
+    # Date, Time & Calculation
+    "date", "cal", "ncal", "time",
+    "bc", "dc", "expr", "factor",
+
+    # User & System Info
+    "whoami", "id", "groups", "who", "w", "users",
+    "last", "lastlog", "finger",
+    "uname", "hostname", "hostnamectl", "uptime", "arch", "nproc",
+    "lscpu", "lsmem", "free", "df", "du",
+    "lsblk", "lsusb", "lspci", "lsof", "dmesg",
+
+    # Process Inspection
+    "ps", "top", "htop", "pgrep", "pidof", "pstree", "jobs",
+
+    # Network Inspection
+    "ping", "ping6", "traceroute", "tracepath", "mtr",
+    "dig", "nslookup", "host", "whois",
+    "ip", "ifconfig", "ss", "netstat",
+
+    # Shell Builtins & Utilities
+    "test", "[", "[[", "true", "false", "sleep",
+    "env", "printenv",
+
+    # Documentation
+    "man", "info", "help", "apropos", "whatis", "tldr",
+
+    # Misc Utilities
+    "watch", "timeout",
+    "md5sum", "sha1sum", "sha256sum", "sha512sum",
+    "base64", "jq",
+]
+
+# Git read-only commands
+[[bash.allow.git]]
+args.position = { "0" = ["status", "diff", "log", "branch", "show", "ls-files", "remote", "config", "rev-parse", "describe", "blame", "shortlog", "tag", "stash"] }
+
+# gh CLI (read-only operations)
+[[bash.allow.gh]]
+args.position = { "0" = ["pr", "issue", "repo", "api", "status", "search"] }
+
+# Package manager list/info commands
+[[bash.allow.npm]]
+args.position = { "0" = ["list", "ls", "info", "view", "outdated", "explain", "why", "config"] }
+
+[[bash.allow.yarn]]
+args.position = { "0" = ["list", "info", "why", "config"] }
+
+[[bash.allow.pnpm]]
+args.position = { "0" = ["list", "ls", "why", "config"] }
+
+# Python tools
+[[bash.allow.pip]]
+args.position = { "0" = ["list", "show", "freeze", "check"] }
+
+[[bash.allow.python]]
+args.any = ["--version", "-V", "-c"]
+
+[[bash.allow.python3]]
+args.any = ["--version", "-V", "-c"]
+
+[[bash.allow.node]]
+args.any = ["--version", "-v", "-e", "-p"]
+
+[[bash.allow.uv]]
+args.position = { "0" = ["pip", "tree", "version"] }
+
+# Read files - broad access for exploration
+[read]
+default = "allow"
+
+[read.deny]
+paths = ["path:$HOME/.ssh/**", "path:**/*.key", "path:**/*.pem", "path:**/.env*"]
+message = "Cannot read sensitive files"
+
+# Edit - completely denied
+[edit]
+default = "deny"
+default_message = "Tasker agent cannot edit files"
+
+# Write - completely denied
+[write]
+default = "deny"
+default_message = "Tasker agent cannot write files"

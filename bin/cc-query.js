@@ -26,7 +26,7 @@ if (args.includes("--help") || args.includes("-h")) {
   console.log("Usage: cc-query [options] [project-path]");
   console.log("");
   console.log("Interactive SQL REPL for querying Claude Code session data.");
-  console.log("Uses chdb (embedded ClickHouse) to query JSONL session files.");
+  console.log("Uses DuckDB to query JSONL session files.");
   console.log("");
   console.log("Arguments:");
   console.log(

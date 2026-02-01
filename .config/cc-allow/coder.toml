@@ -1,0 +1,82 @@
+# Coder agent - implementation focused
+# Full read/write for coding, testing, building
+
+version = "2.0"
+
+[aliases]
+project = "path:$PROJECT_ROOT/**"
+sensitive = ["path:$HOME/.ssh/**", "path:**/*.key", "path:**/*.pem"]
+
+# Bash: coding-focused commands
+[bash]
+default = "ask"
+
+[bash.allow]
+commands = [
+    # Core tools
+    "which", "echo", "env", "printenv", "true", "false",
+    # Build tools
+    "make", "just", "cargo", "go", "tsc", "esbuild", "vite", "webpack", "zig",
+    # Linters/formatters
+    "eslint", "prettier", "biome", "oxlint", "black", "ruff", "rustfmt", "gofmt", "zigfmt",
+    # Test runners
+    "jest", "vitest", "pytest", "mocha", "ava", "tap", "bun",
+    # Runtime
+    "node", "python", "python3", "deno", "bun",
+]
+
+# Git - full access except force operations
+[[bash.allow.git]]
+
+[[bash.deny.git.push]]
+args.any = ["--force", "flags:f"]
+message = "Force push not allowed"
+
+[[bash.deny.git.reset]]
+args.any = ["--hard"]
+message = "Hard reset not allowed"
+
+[[bash.deny.git.clean]]
+args.any = ["flags:f"]
+message = "git clean -f not allowed"
+
+# npm/yarn/pnpm - full access
+[[bash.allow.npm]]
+[[bash.allow.yarn]]
+[[bash.allow.pnpm]]
+[[bash.allow.npx]]
+
+# pip/pipx
+[[bash.allow.pip]]
+[[bash.allow.pipx]]
+[[bash.allow.uv]]
+
+# Read - broad access
+[read]
+default = "allow"
+
+[read.deny]
+paths = ["alias:sensitive"]
+message = "Cannot read sensitive files"
+
+# Edit - project files only
+[edit]
+default = "ask"
+
+[edit.allow]
+paths = ["alias:project", "path:/tmp/**"]
+
+[edit.deny]
+paths = ["path:$HOME/.*", "alias:sensitive"]
+message = "Cannot edit files outside project"
+
+# Write - project files only
+[write]
+default = "ask"
+
+[write.allow]
+paths = ["alias:project", "path:/tmp/**"]
+
+[write.deny]
+paths = ["path:$HOME/.*", "path:/etc/**", "path:/usr/**", "alias:sensitive"]
+message = "Cannot write outside project"
