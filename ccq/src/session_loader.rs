@@ -86,17 +86,24 @@ fn walk_and_count(dir: &Path, session_filter: Option<&str>) -> (usize, usize, us
 
         total_jsonl += 1;
 
-        let basename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let Some(basename) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
         let is_subagent_path = path_str.contains("/subagents/");
 
         if is_subagent_path && basename.starts_with("agent-") {
             if let Some(filter) = session_filter {
                 // Get session dir: /base/session_id/subagents/agent-xxx.jsonl
-                if let Some(parent) = path.parent().and_then(|p| p.parent()) {
-                    let session_dir = parent.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                    if session_dir.starts_with(filter) {
-                        agents += 1;
-                    }
+                let Some(session_dir) = path
+                    .parent()
+                    .and_then(|p| p.parent())
+                    .and_then(|p| p.file_name())
+                    .and_then(|n| n.to_str())
+                else {
+                    continue;
+                };
+                if session_dir.starts_with(filter) {
+                    agents += 1;
                 }
             } else {
                 agents += 1;

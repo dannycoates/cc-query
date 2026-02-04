@@ -42,16 +42,19 @@ fn format_timestamp(unit: TimeUnit, value: i64) -> String {
         TimeUnit::Nanosecond => value / 1_000,
     };
 
-    Utc.timestamp_micros(micros)
-        .single()
-        .map_or_else(|| "INVALID_TIMESTAMP".into(), |dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string())
+    let Some(dt) = Utc.timestamp_micros(micros).single() else {
+        return "INVALID_TIMESTAMP".into();
+    };
+    dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string()
 }
 
 /// Format a date (days since Unix epoch) to "YYYY-MM-DD"
 fn format_date(days: i32) -> String {
     // Unix epoch is 1970-01-01, which is day 719,163 in the CE calendar
-    chrono::NaiveDate::from_num_days_from_ce_opt(days + 719_163)
-        .map_or_else(|| "INVALID_DATE".into(), |d| d.format("%Y-%m-%d").to_string())
+    let Some(d) = chrono::NaiveDate::from_num_days_from_ce_opt(days + 719_163) else {
+        return "INVALID_DATE".into();
+    };
+    d.format("%Y-%m-%d").to_string()
 }
 
 /// Format results as a table with Unicode box-drawing characters.

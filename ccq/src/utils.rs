@@ -1,4 +1,5 @@
 //! Path resolution and project slug utilities.
+#![allow(clippy::option_if_let_else)] // if let is more readable for three-way branch
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -30,30 +31,25 @@ pub fn claude_projects_base() -> PathBuf {
 /// Panics if no home directory is found (when path contains `~`) or if
 /// current directory cannot be determined (for relative paths).
 fn resolve_project_path(path: &str) -> PathBuf {
+    let home = || dirs::home_dir().expect("No home directory found");
+
     // Handle tilde expansion
-    let resolved = path.strip_prefix("~/").map_or_else(
-        || {
-            if path == "~" {
-                dirs::home_dir().expect("No home directory found")
-            } else {
-                PathBuf::from(path)
-            }
-        },
-        |rest| {
-            dirs::home_dir()
-                .expect("No home directory found")
-                .join(rest)
-        },
-    );
+    let resolved = if let Some(rest) = path.strip_prefix("~/") {
+        home().join(rest)
+    } else if path == "~" {
+        home()
+    } else {
+        PathBuf::from(path)
+    };
 
     // If not absolute, resolve against CLAUDE_PROJECT_DIR or cwd
     if resolved.is_absolute() {
-        resolved
-    } else {
-        let base_dir = env::var("CLAUDE_PROJECT_DIR")
-            .map_or_else(|_| env::current_dir().expect("Failed to get current directory"), PathBuf::from);
-        base_dir.join(resolved)
+        return resolved;
     }
+
+    let base_dir = env::var("CLAUDE_PROJECT_DIR")
+        .map_or_else(|_| env::current_dir().expect("Failed to get current directory"), PathBuf::from);
+    base_dir.join(resolved)
 }
 
 /// Generate a project slug from a path.
