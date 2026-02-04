@@ -2,3 +2,6 @@ node_modules/
 .claude/skills
 test/expected/
 test/fixtures/
+
+# Rust
+ccq/target/

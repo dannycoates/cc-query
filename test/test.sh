@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIXTURES_DIR="$SCRIPT_DIR/fixtures"
 EXPECTED_DIR="$SCRIPT_DIR/expected"
-CC_QUERY="$SCRIPT_DIR/../bin/cc-query.js"
+CC_QUERY="${CC_QUERY:-$SCRIPT_DIR/../bin/cc-query.js}"
 
 PASSED=0
 FAILED=0

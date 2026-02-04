@@ -1,0 +1,51 @@
+[package]
+name = "ccq"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "SQL REPL for querying Claude Code session data"
+license = "MIT"
+
+[lib]
+name = "ccq"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ccq"
+path = "src/main.rs"
+
+[dependencies]
+duckdb = { version = "1.4", features = ["bundled"] }
+clap = { version = "4", features = ["derive"] }
+rustyline = "17"
+dirs = "6"
+anyhow = "1"
+thiserror = "2"
+chrono = "0.4"
+walkdir = "2"
+rayon = "1"
+
+[dev-dependencies]
+tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Allow these common patterns
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = true

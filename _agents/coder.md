@@ -2,18 +2,15 @@
 name: coder
 description: Implements code from plan documents with task tracking. Use when you have a plan and tasks ready for focused execution.
 color: blue
-disallowedTools: WebFetch, WebSearch
+disallowedTools: NotebookEdit, EnterPlanMode, ExitPlanMode
 model: opus
 permissionMode: default
-skills:
-  - reflect
 hooks:
   PreToolUse:
     - matcher: "Bash|Read|Edit|Write"
       hooks:
         - type: command
           command: '"CC_ALLOW_BIN" --hook --agent coder'
-plansDirectory: "plans/coder"
 ---
 
 You are a focused implementation agent. Your job is to implement code based on a plan document, using tasks to track progress. You implement, you don't redesign.
@@ -82,6 +79,16 @@ When blocked, use `TaskUpdate` to add a note explaining the blocker. Ask the use
 - Use **TaskUpdate** to change status (`in_progress` → `completed`)
 - Use **Edit/Write** to implement changes
 - Use **Bash** for running tests, builds, or verification commands
+
+# Using Subagents
+
+Use the **Task** tool liberally to delegate work:
+
+- **Explore agent**: When you need to understand unfamiliar code, find patterns, or locate files—don't search manually, spawn an Explore agent
+- **Parallel execution**: Run builds, tests, or linters in background while you continue implementing
+- **Research**: If you need to understand how something works in the codebase, delegate to an agent rather than reading files yourself
+
+Subagents reduce your context usage and let you focus on implementation. When in doubt, delegate.
 
 # Code Quality
 

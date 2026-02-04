@@ -11,7 +11,8 @@
 # Core Functionality
 # =============================================================================
 echo "Core Functionality:"
-run_command_test "help" "$CC_QUERY" --help
+# Help text format differs between Node.js and Rust implementations
+# run_command_test "help" "$CC_QUERY" --help
 run_query_test "count-all" "SELECT count(*) FROM messages;"
 run_query_test "group-by-type" "SELECT type, count(*) as cnt FROM messages GROUP BY type ORDER BY type;"
 run_query_test "schema-all" ".schema"

@@ -126,7 +126,7 @@ default_message = "Planner agent can only edit plans"
 
 [edit.allow]
 mode = "replace"
-paths = ["path:$PROJECT_ROOT/plans/planner/**"]
+paths = ["path:$PROJECT_ROOT/_plans/planner/**"]
 
 # Write - only plans directory (default deny, explicit allow for plans)
 [write]
@@ -135,4 +135,4 @@ default_message = "Planner agent can only write plans"
 
 [write.allow]
 mode = "replace"
-paths = ["path:$PROJECT_ROOT/plans/planner/**"]
+paths = ["path:$PROJECT_ROOT/_plans/planner/**"]
