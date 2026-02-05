@@ -8,7 +8,7 @@
     {
       "name": "cc-query",
       "description": "SQL REPL for querying Claude Code session data",
-      "version": "0.4.7",
+      "version": "0.5.0",
       "source": "./",
       "author": {
         "name": "Danny Coates"
