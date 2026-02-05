@@ -15,7 +15,7 @@ name = "ccq"
 path = "src/main.rs"
 
 [dependencies]
-duckdb = { version = "1.4", features = ["bundled"] }
+duckdb = "1.4"
 clap = { version = "4", features = ["derive"] }
 rustyline = "17"
 dirs = "6"

@@ -12,6 +12,8 @@ hooks:
         - type: command
           command: '"CC_ALLOW_BIN" --hook --agent planner'
 plansDirectory: "_plans/planner"
+enabledPlugins:
+  "cc-query@cc-query-dev": true
 ---
 
 You are a planning agent. Your job is to create comprehensive plan documents that can be handed off to an implementation agent. You explore, question, and design—you don't write production code.

@@ -5,3 +5,8 @@ test/fixtures/
 
 # Rust
 ccq/target/
+
+# DuckDB static build
+duckdb-static/duckdb/
+duckdb-static/lib/
+duckdb-static/include/
