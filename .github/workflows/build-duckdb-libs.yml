@@ -34,7 +34,7 @@ jobs:
             -e DUCKDB_VERSION="${{ env.DUCKDB_VERSION }}" \
             quay.io/pypa/manylinux_2_28_${{ matrix.docker_arch }} \
             bash -c '
-              yum install -y git ninja-build
+              yum install -y git ninja-build zlib-static zlib-devel
               git clone -b $DUCKDB_VERSION --depth 1 https://github.com/duckdb/duckdb.git
               cd duckdb
               BUILD_EXTENSIONS="json" \
@@ -44,11 +44,14 @@ jobs:
               make release
               mkdir -p build/release/vcpkg_installed
               make bundle-library
+              # Copy zlib static lib for bundling with DuckDB
+              cp /usr/lib*/libz.a /work/libz.a
             '
 
           mkdir -p dist/${{ matrix.rust_target }}
           cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.rust_target }}/libduckdb_static.a
           cp duckdb/src/include/duckdb.h dist/${{ matrix.rust_target }}/
+          cp libz.a dist/${{ matrix.rust_target }}/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -90,6 +93,13 @@ jobs:
           mkdir -p dist/${{ matrix.rust_target }}
           cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.rust_target }}/libduckdb_static.a
           cp duckdb/src/include/duckdb.h dist/${{ matrix.rust_target }}/
+          # Copy zlib static lib for bundling with DuckDB
+          SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
+          if [ -f "$SDK_PATH/usr/lib/libz.a" ]; then
+            cp "$SDK_PATH/usr/lib/libz.a" dist/${{ matrix.rust_target }}/
+          elif [ -f /usr/lib/libz.a ]; then
+            cp /usr/lib/libz.a dist/${{ matrix.rust_target }}/
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
