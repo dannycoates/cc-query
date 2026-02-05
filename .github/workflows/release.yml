@@ -40,15 +40,12 @@ jobs:
           chmod +x scripts/download-duckdb-libs.sh
           ./scripts/download-duckdb-libs.sh
 
-      - name: Ensure zlib is available for static linking
+      - name: Ensure zlib is available for linking
         run: |
           sudo apt-get update && sudo apt-get install -y zlib1g-dev
-          # Copy system zlib to target dirs that don't already have it
-          for target_dir in duckdb-libs/*/; do
-            if [ ! -f "$target_dir/libz.a" ]; then
-              cp /usr/lib/x86_64-linux-gnu/libz.a "$target_dir" || true
-            fi
-          done
+          # Zig's linker needs libz.so for native target (cross targets use zig's bundled sysroot)
+          cp -L /usr/lib/x86_64-linux-gnu/libz.so duckdb-libs/x86_64-unknown-linux-gnu/
+          cp -L /usr/lib/x86_64-linux-gnu/libz.a duckdb-libs/x86_64-unknown-linux-gnu/ 2>/dev/null || true
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
