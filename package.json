@@ -1,6 +1,6 @@
 {
   "name": "cc-query",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "SQL REPL for querying Claude Code session data",
   "type": "module",
   "exports": {
