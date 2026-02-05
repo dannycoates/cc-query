@@ -1,0 +1,128 @@
+name: Build DuckDB Static Libraries
+
+on:
+  workflow_dispatch:
+    inputs:
+      duckdb_version:
+        description: 'DuckDB version tag (e.g., v1.4.4)'
+        required: true
+        default: 'v1.4.4'
+
+env:
+  DUCKDB_VERSION: ${{ inputs.duckdb_version }}
+
+jobs:
+  build-linux:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            docker_arch: x86_64
+            rust_target: x86_64-unknown-linux-gnu
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            docker_arch: aarch64
+            rust_target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build DuckDB in Docker
+        run: |
+          docker run --rm -v $PWD:/work -w /work \
+            -e DUCKDB_VERSION="${{ env.DUCKDB_VERSION }}" \
+            quay.io/pypa/manylinux_2_28_${{ matrix.docker_arch }} \
+            bash -c '
+              yum install -y git ninja-build
+              git clone -b $DUCKDB_VERSION --depth 1 https://github.com/duckdb/duckdb.git
+              cd duckdb
+              BUILD_EXTENSIONS="json" \
+              ENABLE_EXTENSION_AUTOLOADING=0 \
+              ENABLE_EXTENSION_AUTOINSTALL=0 \
+              GEN=ninja \
+              make release
+              mkdir -p build/release/vcpkg_installed
+              make bundle-library
+            '
+
+          mkdir -p dist/${{ matrix.rust_target }}
+          cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.rust_target }}/libduckdb_static.a
+          cp duckdb/src/include/duckdb.h dist/${{ matrix.rust_target }}/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duckdb-${{ matrix.rust_target }}
+          path: dist/${{ matrix.rust_target }}
+
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            osx_arch: x86_64
+            rust_target: x86_64-apple-darwin
+          - arch: arm64
+            osx_arch: arm64
+            rust_target: aarch64-apple-darwin
+    # macos-latest is arm64; OSX_BUILD_ARCH handles cross-compilation
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Build DuckDB
+        run: |
+          git clone -b ${{ env.DUCKDB_VERSION }} --depth 1 https://github.com/duckdb/duckdb.git
+          cd duckdb
+          OSX_BUILD_ARCH=${{ matrix.osx_arch }} \
+          BUILD_EXTENSIONS='json' \
+          ENABLE_EXTENSION_AUTOLOADING=0 \
+          ENABLE_EXTENSION_AUTOINSTALL=0 \
+          GEN=ninja \
+          make release
+          mkdir -p build/release/vcpkg_installed
+          make bundle-library
+
+          cd ..
+          mkdir -p dist/${{ matrix.rust_target }}
+          cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.rust_target }}/libduckdb_static.a
+          cp duckdb/src/include/duckdb.h dist/${{ matrix.rust_target }}/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duckdb-${{ matrix.rust_target }}
+          path: dist/${{ matrix.rust_target }}
+
+  create-release:
+    needs: [build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: duckdb-libs
+          pattern: duckdb-*
+          merge-multiple: false
+
+      - name: Create zip archives
+        run: |
+          cd duckdb-libs
+          for dir in duckdb-*/; do
+            target=$(basename "$dir")
+            zip -rj "${target}.zip" "$dir"
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: duckdb-libs-${{ env.DUCKDB_VERSION }}
+          name: DuckDB Static Libraries ${{ env.DUCKDB_VERSION }}
+          files: duckdb-libs/*.zip
+          body: |
+            Pre-built DuckDB static libraries for ccq cross-compilation.
+            - Minimal build: json extension only
+            - No autoloading/autoinstall

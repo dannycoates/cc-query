@@ -10,3 +10,6 @@ ccq/target/
 duckdb-static/duckdb/
 duckdb-static/lib/
 duckdb-static/include/
+
+# Cross-compilation DuckDB libs
+duckdb-libs/

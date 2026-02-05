@@ -99,3 +99,25 @@ clean-duckdb:
 # Clean everything including DuckDB source
 clean-all: clean-duckdb
     rm -rf {{duckdb_src}} ccq/target
+
+# === Cross-compilation targets ===
+
+# Download pre-built DuckDB libs (requires gh auth)
+download-duckdb-libs:
+    DUCKDB_LIBS_VERSION={{duckdb_version}} ./scripts/download-duckdb-libs.sh
+
+# Build for a specific target (requires duckdb-libs)
+build-target target:
+    cd ccq && \
+    DUCKDB_LIB_DIR="$(pwd)/../duckdb-libs/{{target}}" \
+    DUCKDB_INCLUDE_DIR="$(pwd)/../duckdb-libs/{{target}}" \
+    DUCKDB_STATIC=1 \
+    cargo zigbuild --release --target {{target}}
+
+# Test goreleaser config
+goreleaser-check:
+    goreleaser check
+
+# Dry-run release (no publish)
+release-dry:
+    goreleaser release --snapshot --clean
