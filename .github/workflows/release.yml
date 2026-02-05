@@ -9,51 +9,91 @@ permissions:
   contents: write
 
 jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            os: linux
+            arch: amd64
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            os: linux
+            arch: arm64
+          - target: x86_64-apple-darwin
+            runner: macos-13
+            os: darwin
+            arch: amd64
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+            os: darwin
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential zlib1g-dev
+
+      - name: Download DuckDB libs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p duckdb-libs/${{ matrix.target }}
+          gh release download "duckdb-libs-v1.4.4" \
+            --repo "${{ github.repository }}" \
+            --pattern "duckdb-${{ matrix.target }}.zip" \
+            --dir duckdb-libs
+          unzip -o "duckdb-libs/duckdb-${{ matrix.target }}.zip" -d "duckdb-libs/${{ matrix.target }}"
+          rm "duckdb-libs/duckdb-${{ matrix.target }}.zip"
+
+      - name: Build
+        env:
+          DUCKDB_LIB_DIR: ${{ github.workspace }}/duckdb-libs/${{ matrix.target }}
+          DUCKDB_INCLUDE_DIR: ${{ github.workspace }}/duckdb-libs/${{ matrix.target }}
+          DUCKDB_STATIC: "1"
+        run: cargo build --release --manifest-path ccq/Cargo.toml
+
+      - name: Create archive
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          ARCHIVE="ccq_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
+          tar czf "$ARCHIVE" -C ccq/target/release ccq
+          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ccq-${{ matrix.target }}
+          path: ${{ env.ARCHIVE }}
+
   release:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Zig
-        uses: goto-bus-stop/setup-zig@v2
-
-      - name: Install cargo-zigbuild
-        run: cargo install --locked cargo-zigbuild
-
-      - name: Add Rust targets
-        run: |
-          rustup target add x86_64-unknown-linux-gnu
-          rustup target add aarch64-unknown-linux-gnu
-          rustup target add x86_64-apple-darwin
-          rustup target add aarch64-apple-darwin
-
-      - name: Download DuckDB libs
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DUCKDB_LIBS_VERSION: v1.4.4
-        run: |
-          chmod +x scripts/download-duckdb-libs.sh
-          ./scripts/download-duckdb-libs.sh
-
-      - name: Ensure zlib is available for linking
-        run: |
-          sudo apt-get update && sudo apt-get install -y zlib1g-dev
-          # Zig's linker needs libz.so for native target (cross targets use zig's bundled sysroot)
-          cp -L /usr/lib/x86_64-linux-gnu/libz.so duckdb-libs/x86_64-unknown-linux-gnu/
-          cp -L /usr/lib/x86_64-linux-gnu/libz.a duckdb-libs/x86_64-unknown-linux-gnu/ 2>/dev/null || true
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+      - uses: actions/download-artifact@v4
         with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # PWD is used by .goreleaser.yml to construct per-target paths
-          PWD: ${{ github.workspace }}
+          path: dist
+          pattern: ccq-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt
+          generate_release_notes: true
