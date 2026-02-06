@@ -4,7 +4,7 @@
 version = "2.0"
 
 [bash.allow]
-commands = ["path:$HOME/**/cc-query", "path:$PROJECT_ROOT/**", "just", "cargo"]
+commands = ["path:$HOME/**/cc-query", "path:$PROJECT_ROOT/**", "just", "cargo", "zig", "make", "ar", "nm"]
 
 [[bash.ask.just.bump]]
 

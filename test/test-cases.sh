@@ -128,7 +128,7 @@ run_query_test "uuid-like-match" "SELECT count(*) FROM messages WHERE uuid::VARC
 # =============================================================================
 echo ""
 echo "Derived Fields:"
-run_query_test "derived-isagent" "SELECT isAgent, count(*) as cnt FROM messages GROUP BY isAgent;"
+run_query_test "derived-isagent" "SELECT isAgent, count(*) as cnt FROM messages GROUP BY isAgent ORDER BY isAgent;"
 run_query_test "derived-project" "SELECT project, count(*) as cnt FROM messages WHERE project IS NOT NULL GROUP BY project ORDER BY cnt DESC LIMIT 3;"
 run_query_test "derived-rownum" "SELECT rownum, type FROM messages ORDER BY rownum LIMIT 3;"
 

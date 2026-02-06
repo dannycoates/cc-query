@@ -10,6 +10,7 @@ on:
 
 env:
   DUCKDB_VERSION: ${{ inputs.duckdb_version }}
+  ZIG_VERSION: '0.15.2'
 
 jobs:
   build-linux:
@@ -19,11 +20,13 @@ jobs:
           - arch: amd64
             runner: ubuntu-latest
             docker_arch: x86_64
-            rust_target: x86_64-unknown-linux-gnu
+            zig_arch: x86_64
+            target: x86_64-unknown-linux-gnu
           - arch: arm64
             runner: ubuntu-24.04-arm
             docker_arch: aarch64
-            rust_target: aarch64-unknown-linux-gnu
+            zig_arch: aarch64
+            target: aarch64-unknown-linux-gnu
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -32,28 +35,55 @@ jobs:
         run: |
           docker run --rm -v $PWD:/work -w /work \
             -e DUCKDB_VERSION="${{ env.DUCKDB_VERSION }}" \
+            -e ZIG_VERSION="${{ env.ZIG_VERSION }}" \
+            -e ZIG_ARCH="${{ matrix.zig_arch }}" \
             quay.io/pypa/manylinux_2_28_${{ matrix.docker_arch }} \
             bash -c '
+              set -euo pipefail
               yum install -y git ninja-build
+
+              # Install zig
+              curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz" | tar -xJ
+              export PATH="$PWD/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}:$PATH"
+
               git clone -b $DUCKDB_VERSION --depth 1 https://github.com/duckdb/duckdb.git
               cd duckdb
+
+              # Patch pcg_extras.hpp: __DATE__/__TIME__ causes -Werror,-Wdate-time with clang/zig
+              sed -i "s/__DATE__ __TIME__ __FILE__/__FILE__/" third_party/pcg/pcg_extras.hpp
+
+              CC="zig cc" CXX="zig c++" \
               BUILD_EXTENSIONS="json" \
               ENABLE_EXTENSION_AUTOLOADING=0 \
               ENABLE_EXTENSION_AUTOINSTALL=0 \
               GEN=ninja \
               make release
+
               mkdir -p build/release/vcpkg_installed
               make bundle-library
+
+              # Copy zig libc++ for Rust builds
+              tmp_cpp=$(mktemp --suffix=.cpp)
+              tmp_out=$(mktemp)
+              echo "int main() {}" > "$tmp_cpp"
+              link_out=$(zig c++ -v "$tmp_cpp" -o "$tmp_out" 2>&1)
+              rm -f "$tmp_cpp" "$tmp_out"
+              for lib in libc++.a libc++abi.a; do
+                path=$(echo "$link_out" | tr " " "\n" | grep "/${lib}$" | head -1)
+                [ -n "$path" ] && cp "$path" build/release/
+              done
             '
 
-          mkdir -p dist/${{ matrix.rust_target }}
-          cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.rust_target }}/libduckdb_static.a
-          cp duckdb/src/include/duckdb.h dist/${{ matrix.rust_target }}/
+          mkdir -p dist/${{ matrix.target }}
+          cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.target }}/libduckdb_static.a
+          cp duckdb/build/release/libc++.a dist/${{ matrix.target }}/
+          cp duckdb/build/release/libc++abi.a dist/${{ matrix.target }}/
+          cp duckdb/src/include/duckdb.h dist/${{ matrix.target }}/
 
       - uses: actions/upload-artifact@v4
         with:
-          name: duckdb-${{ matrix.rust_target }}
-          path: dist/${{ matrix.rust_target }}
+          name: duckdb-${{ matrix.target }}
+          path: dist/${{ matrix.target }}
 
   build-macos:
     strategy:
@@ -61,40 +91,64 @@ jobs:
         include:
           - arch: amd64
             osx_arch: x86_64
-            rust_target: x86_64-apple-darwin
+            zig_arch: x86_64
+            target: x86_64-apple-darwin
           - arch: arm64
             osx_arch: arm64
-            rust_target: aarch64-apple-darwin
+            zig_arch: aarch64
+            target: aarch64-apple-darwin
     # macos-latest is arm64; OSX_BUILD_ARCH handles cross-compilation
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Ninja
-        run: brew install ninja
+      - name: Install Dependencies
+        run: |
+          brew install ninja
+          curl -L "https://ziglang.org/download/${{ env.ZIG_VERSION }}/zig-macos-${{ matrix.zig_arch }}-${{ env.ZIG_VERSION }}.tar.xz" | tar -xJ
+          echo "$PWD/zig-macos-${{ matrix.zig_arch }}-${{ env.ZIG_VERSION }}" >> "$GITHUB_PATH"
 
       - name: Build DuckDB
         run: |
           git clone -b ${{ env.DUCKDB_VERSION }} --depth 1 https://github.com/duckdb/duckdb.git
           cd duckdb
+
+          # Patch pcg_extras.hpp: __DATE__/__TIME__ causes -Werror,-Wdate-time with clang/zig
+          sed -i '' 's/__DATE__ __TIME__ __FILE__/__FILE__/' third_party/pcg/pcg_extras.hpp
+
+          CC="zig cc" CXX="zig c++" \
           OSX_BUILD_ARCH=${{ matrix.osx_arch }} \
           BUILD_EXTENSIONS='json' \
           ENABLE_EXTENSION_AUTOLOADING=0 \
           ENABLE_EXTENSION_AUTOINSTALL=0 \
           GEN=ninja \
           make release
+
           mkdir -p build/release/vcpkg_installed
           make bundle-library
 
+          # Copy zig libc++ for Rust builds
+          tmp_cpp=$(mktemp).cpp
+          tmp_out=$(mktemp)
+          echo "int main() {}" > "$tmp_cpp"
+          link_out=$(zig c++ -v "$tmp_cpp" -o "$tmp_out" 2>&1)
+          rm -f "$tmp_cpp" "$tmp_out"
+          for lib in libc++.a libc++abi.a; do
+            path=$(echo "$link_out" | tr ' ' '\n' | grep "/${lib}$" | head -1)
+            [ -n "$path" ] && cp "$path" build/release/
+          done
+
           cd ..
-          mkdir -p dist/${{ matrix.rust_target }}
-          cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.rust_target }}/libduckdb_static.a
-          cp duckdb/src/include/duckdb.h dist/${{ matrix.rust_target }}/
+          mkdir -p dist/${{ matrix.target }}
+          cp duckdb/build/release/libduckdb_bundle.a dist/${{ matrix.target }}/libduckdb_static.a
+          cp duckdb/build/release/libc++.a dist/${{ matrix.target }}/
+          cp duckdb/build/release/libc++abi.a dist/${{ matrix.target }}/
+          cp duckdb/src/include/duckdb.h dist/${{ matrix.target }}/
 
       - uses: actions/upload-artifact@v4
         with:
-          name: duckdb-${{ matrix.rust_target }}
-          path: dist/${{ matrix.rust_target }}
+          name: duckdb-${{ matrix.target }}
+          path: dist/${{ matrix.target }}
 
   create-release:
     needs: [build-linux, build-macos]
@@ -123,6 +177,7 @@ jobs:
           name: DuckDB Static Libraries ${{ env.DUCKDB_VERSION }}
           files: duckdb-libs/*.zip
           body: |
-            Pre-built DuckDB static libraries for ccq cross-compilation.
+            Pre-built DuckDB static libraries for ccq (Rust + Zig).
+            - Built with zig c++ (libc++ ABI)
             - Minimal build: json extension only
             - No autoloading/autoinstall

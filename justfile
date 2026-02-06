@@ -51,7 +51,8 @@ bench:
 
 # === DuckDB static library (one-time setup) ===
 
-# Clone and build DuckDB static library (~10 min first time)
+# Clone and build DuckDB static library with zig c++ (~10 min first time)
+# Produces a libc++ ABI lib usable by both Zig and Rust
 setup-duckdb:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -61,35 +62,47 @@ setup-duckdb:
         git clone -b {{duckdb_version}} --depth 1 https://github.com/duckdb/duckdb.git {{duckdb_src}}
     fi
 
-    # Build with minimal extensions
+    # Patch pcg_extras.hpp to remove __DATE__/__TIME__ (causes -Werror,-Wdate-time with clang/zig)
+    pcg_file="{{duckdb_src}}/third_party/pcg/pcg_extras.hpp"
+    if grep -q '__DATE__ __TIME__' "$pcg_file"; then
+        sed -i 's/__DATE__ __TIME__ __FILE__/__FILE__/' "$pcg_file"
+        echo "Patched pcg_extras.hpp (removed __DATE__ __TIME__)"
+    fi
+
+    # Build with zig c++ for libc++ ABI
     cd {{duckdb_src}}
+    CC="zig cc" CXX="zig c++" \
     BUILD_EXTENSIONS='json' \
     ENABLE_EXTENSION_AUTOLOADING=0 \
     ENABLE_EXTENSION_AUTOINSTALL=0 \
     GEN=ninja \
-    make bundle-library || {
-        # Fallback: manually bundle if vcpkg isn't present
-        echo "bundle-library failed, creating bundle manually..."
-        cd build/release
-        rm -rf bundle && mkdir -p bundle
-        cp src/libduckdb_static.a bundle/
-        cp third_party/*/libduckdb_*.a bundle/ 2>/dev/null || true
-        cp extension/*/lib*_extension.a bundle/ 2>/dev/null || true
-        cd bundle
-        for a in *.a; do
-            mkdir -p "${a}.objects"
-            mv "$a" "${a}.objects/"
-            (cd "${a}.objects" && ar -x "$a")
-        done
-        ar -rcs libduckdb_bundle.a */*.o
-        echo "Bundle created: $(ls -lh libduckdb_bundle.a)"
-    }
+    make release
+
+    # bundle-library needs this dir to exist (even if empty)
+    mkdir -p build/release/vcpkg_installed
+    make bundle-library
 
     # Copy to output directories
     cd {{justfile_directory()}}
     mkdir -p {{duckdb_lib}} {{duckdb_include}}
-    cp {{duckdb_src}}/build/release/bundle/libduckdb_bundle.a {{duckdb_lib}}/libduckdb_static.a
+    cp {{duckdb_src}}/build/release/libduckdb_bundle.a {{duckdb_lib}}/libduckdb_static.a
+    ln -sf libduckdb_static.a {{duckdb_lib}}/libduckdb.a
     cp {{duckdb_src}}/src/include/duckdb.h {{duckdb_include}}/
+
+    # Copy zig's libc++ and libc++abi so Rust can find them in the same lib dir
+    tmp_cpp=$(mktemp --suffix=.cpp)
+    tmp_out=$(mktemp)
+    echo 'int main() {}' > "$tmp_cpp"
+    zig_link_output=$(zig c++ -v "$tmp_cpp" -o "$tmp_out" 2>&1)
+    rm -f "$tmp_cpp" "$tmp_out"
+    for lib in libc++.a libc++abi.a; do
+        path=$(echo "$zig_link_output" | tr ' ' '\n' | grep "/${lib}$" | head -1)
+        if [ -n "$path" ]; then
+            cp "$path" {{duckdb_lib}}/
+        fi
+    done
+    echo "Copied zig's libc++.a and libc++abi.a to {{duckdb_lib}}/"
+
     echo "DuckDB static library ready in {{duckdb_lib}}/"
 
 # Clean DuckDB build artifacts (keeps source)
