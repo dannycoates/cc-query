@@ -3,4 +3,12 @@
 # Usage: cc-query [options] [project-path]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec node "${SCRIPT_DIR}/cc-query.js" "$@"
+PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
+CCQ_BIN="${PLUGIN_ROOT}/bin/ccq"
+
+# Install if binary doesn't exist
+if [ ! -x "$CCQ_BIN" ]; then
+  "${PLUGIN_ROOT}/scripts/install" >&2
+fi
+
+exec "$CCQ_BIN" "$@"

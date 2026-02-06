@@ -6,6 +6,9 @@ test/fixtures/
 # Rust
 ccq/target/
 
+# Downloaded binary
+bin/ccq
+
 # DuckDB static build
 duckdb-static/duckdb/
 duckdb-static/lib/

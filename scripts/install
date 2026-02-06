@@ -1,11 +1,29 @@
 #!/bin/bash
 set -e
 
-cd "${CLAUDE_PLUGIN_ROOT}"
+REPO="dannycoates/cc-query"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$(dirname "$0")")}"
+BIN_DIR="${PLUGIN_ROOT}/bin"
 
-# Already installed
-if [ -d "node_modules" ]; then
-  exit 0
+# Detect platform
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case $ARCH in
+  x86_64) ARCH="amd64" ;;
+  aarch64|arm64) ARCH="arm64" ;;
+esac
+
+CCQ_BIN="${BIN_DIR}/ccq"
+
+# Download if not already installed
+if [ ! -x "$CCQ_BIN" ]; then
+  mkdir -p "$BIN_DIR"
+
+  # Get download URL for matching platform from ccq releases
+  RELEASES_URL="https://api.github.com/repos/${REPO}/releases"
+  DOWNLOAD_URL=$(curl -sL "$RELEASES_URL" | grep "browser_download_url.*ccq_.*${OS}_${ARCH}" | head -1 | cut -d'"' -f4)
+
+  # Download and extract
+  curl -sL "$DOWNLOAD_URL" | tar -xz -C "$BIN_DIR"
+  chmod +x "$CCQ_BIN"
 fi
-
-npm install

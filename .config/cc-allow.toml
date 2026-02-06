@@ -9,7 +9,7 @@ commands = ["path:$HOME/**/cc-query", "path:$PROJECT_ROOT/**", "just", "cargo", 
 [[bash.ask.just.bump]]
 
 [read.allow]
-paths = ["path:$HOME/.local/log/cc-proxy/cc-proxy.log", "path:/usr/lib/zig/**", "path:$HOME/.cache/zig/**"]
+paths = ["path:$HOME/.local/log/cc-proxy/cc-proxy.log", "path:/usr/lib/zig/**", "path:$HOME/.cache/zig/**", "path:$HOME/code/cc-*/**"]
 
 [write.allow]
 paths = ["path:$HOME/.cache/zig/**"]
