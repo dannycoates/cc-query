@@ -9,8 +9,8 @@ fn main() {
         if let Ok(lib_dir) = std::env::var("DUCKDB_LIB_DIR") {
             println!("cargo:rustc-link-search=native={lib_dir}");
         }
-        println!("cargo:rustc-link-lib=static=c++");
-        println!("cargo:rustc-link-lib=static=c++abi");
+        println!("cargo:rustc-link-lib=static:+whole-archive=c++");
+        println!("cargo:rustc-link-lib=static:+whole-archive=c++abi");
 
         // Platform-specific libraries
         let target = std::env::var("TARGET").unwrap_or_default();
