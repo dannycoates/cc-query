@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       duckdb_version:
-        description: 'DuckDB version tag (e.g., v1.4.4)'
+        description: "DuckDB version tag (e.g., v1.4.4)"
         required: true
-        default: 'v1.4.4'
+        default: "v1.4.4"
 
 env:
   DUCKDB_VERSION: ${{ inputs.duckdb_version }}
-  ZIG_VERSION: '0.15.2'
+  ZIG_VERSION: "0.15.2"
 
 jobs:
   build-linux:
@@ -43,8 +43,8 @@ jobs:
               yum install -y git ninja-build
 
               # Install zig
-              curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz" | tar -xJ
-              export PATH="$PWD/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}:$PATH"
+              curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" | tar -xJ
+              export PATH="$PWD/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}:$PATH"
 
               git clone -b $DUCKDB_VERSION --depth 1 https://github.com/duckdb/duckdb.git
               cd duckdb
@@ -90,23 +90,23 @@ jobs:
       matrix:
         include:
           - arch: amd64
+            runner: macos-15-intel
             osx_arch: x86_64
             zig_arch: x86_64
             target: x86_64-apple-darwin
           - arch: arm64
+            runner: macos-latest
             osx_arch: arm64
             zig_arch: aarch64
             target: aarch64-apple-darwin
-    # macos-latest is arm64; OSX_BUILD_ARCH handles cross-compilation
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Dependencies
         run: |
-          brew install ninja
-          curl -L "https://ziglang.org/download/${{ env.ZIG_VERSION }}/zig-macos-${{ matrix.zig_arch }}-${{ env.ZIG_VERSION }}.tar.xz" | tar -xJ
-          echo "$PWD/zig-macos-${{ matrix.zig_arch }}-${{ env.ZIG_VERSION }}" >> "$GITHUB_PATH"
+          curl -L "https://ziglang.org/download/${{ env.ZIG_VERSION }}/zig-${{ matrix.zig_arch }}-macos-${{ env.ZIG_VERSION }}.tar.xz" | tar -xJ
+          echo "$PWD/zig-${{ matrix.zig_arch }}-macos-${{ env.ZIG_VERSION }}" >> "$GITHUB_PATH"
 
       - name: Build DuckDB
         run: |
