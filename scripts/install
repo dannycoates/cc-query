@@ -23,7 +23,9 @@ if [ ! -x "$CCQ_BIN" ]; then
   RELEASES_URL="https://api.github.com/repos/${REPO}/releases"
   DOWNLOAD_URL=$(curl -sL "$RELEASES_URL" | grep "browser_download_url.*ccq_.*${OS}_${ARCH}" | head -1 | cut -d'"' -f4)
 
-  # Download and extract
-  curl -sL "$DOWNLOAD_URL" | tar -xz -C "$BIN_DIR"
-  chmod +x "$CCQ_BIN"
+  # Download and extract (non-fatal if network fails)
+  if [ -n "$DOWNLOAD_URL" ]; then
+    curl -sL "$DOWNLOAD_URL" | tar -xz -C "$BIN_DIR" 2>/dev/null || true
+    [ -f "$CCQ_BIN" ] && chmod +x "$CCQ_BIN" || true
+  fi
 fi
