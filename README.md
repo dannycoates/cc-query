@@ -28,6 +28,23 @@ npm install -g cc-query
 
 Requires Node.js 24+.
 
+### Standalone CLI Access (Plugin Install)
+
+When installed as a plugin, the CLI binary is inside a versioned cache directory that isn't on your shell's PATH. To use `cc-query` directly from the terminal, create a wrapper script that resolves the current version via glob:
+
+```bash
+#!/usr/bin/env bash
+exec ~/.claude/plugins/cache/cc-query-dev/cc-query/*/bin/cc-query "$@"
+```
+
+Save this as `cc-query` somewhere on your PATH (e.g. `~/bin/cc-query` or `~/.local/bin/cc-query`) and make it executable:
+
+```bash
+chmod +x ~/bin/cc-query
+```
+
+The glob matches whichever version directory is present, so the wrapper survives plugin updates without changes.
+
 ## Usage
 
 ```bash
