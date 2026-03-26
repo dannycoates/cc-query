@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Configuration
-DUCKDB_LIBS_VERSION="${DUCKDB_LIBS_VERSION:-v1.4.4}"
+DUCKDB_LIBS_VERSION="${DUCKDB_LIBS_VERSION:-v1.5.1}"
 DUCKDB_LIBS_DIR="${DUCKDB_LIBS_DIR:-duckdb-libs}"
 REPO="${GITHUB_REPOSITORY:-danny/cc-query}"  # Update with actual repo
 

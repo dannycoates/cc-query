@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       duckdb_version:
-        description: "DuckDB version tag (e.g., v1.4.4)"
+        description: "DuckDB version tag (e.g., v1.5.1)"
         required: true
-        default: "v1.4.4"
+        default: "v1.5.1"
 
 env:
   DUCKDB_VERSION: ${{ inputs.duckdb_version }}

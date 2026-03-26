@@ -40,23 +40,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential zlib1g-dev
 
-      - name: Download DuckDB libs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p duckdb-libs/${{ matrix.target }}
-          gh release download "duckdb-libs-v1.4.4" \
-            --repo "${{ github.repository }}" \
-            --pattern "duckdb-${{ matrix.target }}.zip" \
-            --dir duckdb-libs
-          unzip -o "duckdb-libs/duckdb-${{ matrix.target }}.zip" -d "duckdb-libs/${{ matrix.target }}"
-          rm "duckdb-libs/duckdb-${{ matrix.target }}.zip"
-
       - name: Build
-        env:
-          DUCKDB_LIB_DIR: ${{ github.workspace }}/duckdb-libs/${{ matrix.target }}
-          DUCKDB_INCLUDE_DIR: ${{ github.workspace }}/duckdb-libs/${{ matrix.target }}
-          DUCKDB_STATIC: "1"
         run: cargo build --release --manifest-path ccq/Cargo.toml
 
       - name: Create archive

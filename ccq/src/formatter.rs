@@ -33,7 +33,7 @@ impl Display for DisplayValueRef<'_> {
     }
 }
 
-/// Format a timestamp to match Node.js output: "YYYY-MM-DD HH:MM:SS.mmm"
+/// Format a timestamp as "YYYY-MM-DD HH:MM:SS.mmm"
 fn format_timestamp(unit: TimeUnit, value: i64) -> String {
     let micros = match unit {
         TimeUnit::Second => value * 1_000_000,
@@ -59,7 +59,7 @@ fn format_date(days: i32) -> String {
 
 /// Format results as a table with Unicode box-drawing characters.
 ///
-/// Format matches Node.js exactly:
+/// Output format:
 /// ```text
 /// ┌──────────┬───────┐
 /// │ column1  │ col2  │

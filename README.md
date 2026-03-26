@@ -16,17 +16,7 @@ SQL REPL for querying Claude Code session data using DuckDB.
    /plugin install cc-query@dannycoates-cc-query
    ```
 
-The plugin automatically runs `npm install` on first session start.
-
-### Manual Installation
-
-For use outside of Claude Code
-
-```bash
-npm install -g cc-query
-```
-
-Requires Node.js 24+.
+The plugin automatically installs the `ccq` binary on first session start.
 
 ### Standalone CLI Access (Plugin Install)
 

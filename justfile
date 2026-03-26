@@ -12,18 +12,14 @@ bump type="patch":
 
 # === Rust (ccq) targets ===
 
-duckdb_version := "v1.4.4"
+duckdb_version := "v1.5.1"
 duckdb_src := "duckdb-static/duckdb"
 duckdb_lib := "duckdb-static/lib"
 duckdb_include := "duckdb-static/include"
 
-# Build ccq binary (requires DuckDB static lib - run setup-duckdb first if needed)
+# Build ccq binary (bundled feature compiles DuckDB from source)
 build:
-    cd ccq && \
-    DUCKDB_LIB_DIR="$(pwd)/../{{duckdb_lib}}" \
-    DUCKDB_INCLUDE_DIR="$(pwd)/../{{duckdb_include}}" \
-    DUCKDB_STATIC=1 \
-    cargo build --release
+    cd ccq && cargo build --release
 
 # Typecheck Rust
 check:

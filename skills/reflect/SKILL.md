@@ -11,7 +11,7 @@ Use `${CLAUDE_PLUGIN_ROOT}/bin/cc-query` to analyze Claude Code sessions with SQ
 
 ## Query Planning (Read This First)
 
-**Each bash call costs ~1-2 seconds** (Node.js startup + DuckDB init + JSONL parsing). A session with 20 separate queries wastes 20-40 seconds on overhead alone.
+**Each bash call costs ~1-2 seconds** (DuckDB init + JSONL parsing). A session with 20 separate queries wastes 20-40 seconds on overhead alone.
 
 **Before running any query:**
 1. List all questions you need answered
