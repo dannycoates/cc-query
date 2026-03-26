@@ -34,7 +34,6 @@ EOF
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/bin/cc-query                    # All projects
-${CLAUDE_PLUGIN_ROOT}/bin/cc-query .                  # Current project
 ${CLAUDE_PLUGIN_ROOT}/bin/cc-query ~/code/myproject   # Specific project
 ```
 
