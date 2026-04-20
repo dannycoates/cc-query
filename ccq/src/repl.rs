@@ -243,12 +243,10 @@ pub fn run_piped(session: &QuerySession) -> Result<()> {
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
 
-    // Split by semicolons, keeping the semicolon with each statement
-    let statements: Vec<&str> = input
-        .split(';')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .collect();
+    // Split on top-level `;`, skipping semicolons that appear inside SQL
+    // comments and string literals. A naive `input.split(';')` fragments
+    // valid SQL like `SELECT 1 -- trailing ;\nFROM t` into garbage.
+    let statements = split_statements(&input);
 
     let mut is_first = true;
 
@@ -276,6 +274,126 @@ pub fn run_piped(session: &QuerySession) -> Result<()> {
     writer.flush()?;
 
     Ok(())
+}
+
+/// Split a SQL input into statements on top-level `;` separators, skipping
+/// semicolons that appear inside:
+///   - line comments (`-- …\n`)
+///   - block comments (`/* … */`, nestable — matches DuckDB/PostgreSQL)
+///   - single-quoted strings (`'…'`, with `''` as the escape for `'`)
+///   - double-quoted identifiers (`"…"`, with `""` as the escape for `"`)
+///   - dollar-quoted strings (`$tag$…$tag$`; tag may be empty: `$$…$$`)
+///
+/// Returns trimmed, non-empty statements in source order. Unterminated
+/// comments or strings consume to end of input; the resulting tail is
+/// returned as the final statement and DuckDB surfaces the real parse
+/// error on execution. Does not attempt to handle `E'…'` escape strings
+/// or other dialect extensions — those aren't used in Claude Code
+/// transcripts or the typical `ccq` workflow.
+fn split_statements(input: &str) -> Vec<&str> {
+    let bytes = input.as_bytes();
+    let mut statements = Vec::new();
+    let mut start = 0usize;
+    let mut i = 0usize;
+
+    while i < bytes.len() {
+        let c = bytes[i];
+        match c {
+            // Line comment: skip to end of line (leave the `\n` for normal processing).
+            b'-' if bytes.get(i + 1) == Some(&b'-') => {
+                i += 2;
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            // Block comment, supporting nesting (DuckDB/PG semantics).
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
+                i += 2;
+                let mut depth: u32 = 1;
+                while i < bytes.len() && depth > 0 {
+                    match (bytes[i], bytes.get(i + 1)) {
+                        (b'/', Some(&b'*')) => {
+                            depth += 1;
+                            i += 2;
+                        }
+                        (b'*', Some(&b'/')) => {
+                            depth -= 1;
+                            i += 2;
+                        }
+                        _ => i += 1,
+                    }
+                }
+            }
+            // Single-quoted string or double-quoted identifier. `''` / `""` is
+            // the standard doubled-quote escape in both.
+            b'\'' | b'"' => {
+                let quote = c;
+                i += 1;
+                while i < bytes.len() {
+                    if bytes[i] == quote {
+                        if bytes.get(i + 1) == Some(&quote) {
+                            i += 2; // doubled quote = escape
+                        } else {
+                            i += 1; // closing quote
+                            break;
+                        }
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+            // Dollar-quoted string: `$TAG$…$TAG$` where TAG is [A-Za-z0-9_]*.
+            b'$' => {
+                let tag_start = i + 1;
+                let mut tag_end = tag_start;
+                while tag_end < bytes.len()
+                    && (bytes[tag_end].is_ascii_alphanumeric() || bytes[tag_end] == b'_')
+                {
+                    tag_end += 1;
+                }
+                if tag_end < bytes.len() && bytes[tag_end] == b'$' {
+                    // Valid opener.
+                    let tag_len = tag_end - tag_start;
+                    i = tag_end + 1;
+                    // Scan for matching `$TAG$` closer.
+                    loop {
+                        if i >= bytes.len() {
+                            break;
+                        }
+                        if bytes[i] == b'$'
+                            && i + 1 + tag_len < bytes.len()
+                            && bytes[i + 1 + tag_len] == b'$'
+                            && bytes[i + 1..i + 1 + tag_len] == bytes[tag_start..tag_end]
+                        {
+                            i = i + 1 + tag_len + 1;
+                            break;
+                        }
+                        i += 1;
+                    }
+                } else {
+                    // Bare `$` not opening a dollar quote (e.g. `$1` bind param).
+                    i += 1;
+                }
+            }
+            // Top-level statement terminator.
+            b';' => {
+                let stmt = input[start..i].trim();
+                if !stmt.is_empty() {
+                    statements.push(stmt);
+                }
+                i += 1;
+                start = i;
+            }
+            _ => i += 1,
+        }
+    }
+
+    // Trailing content (input without a terminal `;`).
+    let tail = input[start..].trim();
+    if !tail.is_empty() {
+        statements.push(tail);
+    }
+    statements
 }
 
 fn handle_dot_command_piped(command: &str, session: &QuerySession) -> DotCommandResult {
@@ -321,5 +439,103 @@ mod tests {
         assert!(VIEWS.contains(&"messages"));
         assert!(VIEWS.contains(&"tool_uses"));
         assert_eq!(VIEWS.len(), 11);
+    }
+
+    // --- split_statements() — SQL-aware statement splitter ------------------
+    //
+    // One test per lexical context the splitter must treat as opaque:
+    // - baseline (no comments / strings)
+    // - `--` line comment
+    // - `/* */` block comment (including nested)
+    // - `'…'` single-quoted string (including `''` escape)
+    // - `"…"` double-quoted identifier
+    // - `$tag$…$tag$` dollar-quoted string (including empty tag `$$…$$`)
+
+    #[test]
+    fn split_statements_no_comments_baseline() {
+        assert_eq!(
+            split_statements("SELECT 1; SELECT 2"),
+            vec!["SELECT 1", "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_trailing_semicolon_is_noop() {
+        assert_eq!(split_statements("SELECT 1;"), vec!["SELECT 1"]);
+    }
+
+    #[test]
+    fn split_statements_line_comment_contains_semicolons() {
+        // The `;` inside the `--` comment must not terminate the statement.
+        let sql = "SELECT 1 -- trailing ; here;\nFROM t;\nSELECT 2;";
+        assert_eq!(
+            split_statements(sql),
+            vec!["SELECT 1 -- trailing ; here;\nFROM t", "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_block_comment_contains_semicolons() {
+        let sql = "SELECT /* one; two; */ 1 FROM t; SELECT 2";
+        assert_eq!(
+            split_statements(sql),
+            vec!["SELECT /* one; two; */ 1 FROM t", "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_block_comment_nested() {
+        // DuckDB and PostgreSQL allow nested /* /* */ */ block comments.
+        let sql = "SELECT /* outer /* inner; */ still outer; */ 1; SELECT 2";
+        assert_eq!(
+            split_statements(sql),
+            vec!["SELECT /* outer /* inner; */ still outer; */ 1", "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_single_quoted_string_contains_semicolon() {
+        let sql = "SELECT 'a;b'; SELECT 2";
+        assert_eq!(
+            split_statements(sql),
+            vec!["SELECT 'a;b'", "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_single_quoted_doubled_escape() {
+        // `''` inside `'...'` is the standard escape for a literal `'`.
+        let sql = "SELECT 'it''s ; tricky'; SELECT 2";
+        assert_eq!(
+            split_statements(sql),
+            vec!["SELECT 'it''s ; tricky'", "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_double_quoted_identifier_contains_semicolon() {
+        let sql = r#"SELECT "weird;col" FROM t; SELECT 2"#;
+        assert_eq!(
+            split_statements(sql),
+            vec![r#"SELECT "weird;col" FROM t"#, "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_dollar_quoted_tagged() {
+        let sql = "SELECT $body$one; two; three$body$ FROM t; SELECT 2";
+        assert_eq!(
+            split_statements(sql),
+            vec!["SELECT $body$one; two; three$body$ FROM t", "SELECT 2"]
+        );
+    }
+
+    #[test]
+    fn split_statements_dollar_quoted_empty_tag() {
+        let sql = "SELECT $$raw; data$$; SELECT 2";
+        assert_eq!(
+            split_statements(sql),
+            vec!["SELECT $$raw; data$$", "SELECT 2"]
+        );
     }
 }
